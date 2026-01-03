@@ -1,0 +1,44 @@
+# Secrets (NEVER commit)
+secrets/.env
+secrets/.claude.json
+secrets/jira.env
+*.pem
+*.key
+
+# Keep example files
+!secrets/example.*
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Docker
+.docker/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# SSL certs (managed separately)
+certs/

@@ -1,0 +1,44 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║     ▄▄▄██▀▀▀██▓ ██▀███   ▄▄▄         ▄▄▄        ██████   ██████  ██▓  ██████╗║
+║       ▒██  ▓██▒▓██ ▒ ██▒▒████▄      ▒████▄    ▒██    ▒ ▒██    ▒ ▓██▒ ██╔════╝║
+║       ░██  ▒██▒▓██ ░▄█ ▒▒██  ▀█▄    ▒██  ▀█▄  ░ ▓██▄   ░ ▓██▄   ▒██▒ ╚█████╗ ║
+║    ▓██▄██▓ ░██░▒██▀▀█▄  ░██▄▄▄▄██   ░██▄▄▄▄██   ▒   ██▒  ▒   ██▒░██░  ╚═══██╗║
+║     ▓███▒  ░██░░██▓ ▒██▒ ▓█   ▓██▒   ▓█   ▓██▒▒██████▒▒▒██████▒▒░██░ ██████╔╝║
+║     ▒▓▒▒░  ░▓  ░ ▒▓ ░▒▓░ ▒▒   ▓▒█░   ▒▒   ▓▒█░▒ ▒▓▒ ▒ ░▒ ▒▓▒ ▒ ░░▓   ╚═════╝ ║
+║                           JIRA Assistant Skills - Live Demo                  ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Welcome to the JIRA Assistant Skills live demo!
+
+  SANDBOX:  jasonkrue.atlassian.net
+  PROJECT:  DEMO (Software), DEMOSD (Service Desk)
+  SESSION:  1 hour max
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  QUICK START - Try these commands:                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  claude "Show me all issues in project DEMO"                                 │
+│  claude "Create a bug: Login button not responsive"                          │
+│  claude "What's the status of DEMO-1?"                                       │
+│  claude "Move DEMO-3 to In Progress"                                         │
+│  claude "Find all high priority bugs"                                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  GUIDED SCENARIOS - Step-by-step walkthroughs:                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  cat /workspace/scenarios/issue.md      # Issue CRUD operations              │
+│  cat /workspace/scenarios/search.md     # JQL search examples                │
+│  cat /workspace/scenarios/agile.md      # Sprint & backlog management        │
+│  cat /workspace/scenarios/jsm.md        # Service desk operations            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  DOCS:  https://github.com/grandcamel/jira-assistant-skills
+

@@ -1,0 +1,26 @@
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  nginx:
+    ports:
+      - "8080:80"
+    volumes:
+      - ./landing-page:/var/www/html:ro
+
+  queue-manager:
+    build:
+      context: ./queue-manager
+      dockerfile: Dockerfile
+    volumes:
+      - ./queue-manager:/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=development
+    command: ["node", "--watch", "server.js"]
+
+  redis:
+    ports:
+      - "6379:6379"

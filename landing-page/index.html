@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIRA Assistant Skills - Live Demo</title>
+    <meta name="description" content="Try JIRA Assistant Skills live. Natural language JIRA automation with Claude Code.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="assets/logo.svg" alt="JIRA Assistant Skills" width="40" height="40">
+                <span>JIRA Assistant Skills</span>
+            </div>
+            <nav>
+                <a href="https://github.com/grandcamel/jira-assistant-skills" target="_blank">GitHub</a>
+                <a href="https://github.com/grandcamel/jira-assistant-skills#quick-start" target="_blank">Docs</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Talk to JIRA like you talk to a teammate</h1>
+        <p class="tagline">14 skills, 245 scripts, zero JQL to memorize</p>
+
+        <!-- Queue Status -->
+        <div class="queue-status" id="queue-status">
+            <div class="status-indicator available" id="status-indicator">
+                <span class="dot"></span>
+                <span id="status-text">Checking availability...</span>
+            </div>
+        </div>
+
+        <!-- Start Demo Button -->
+        <button class="start-demo-btn" id="start-demo-btn" disabled>
+            <span class="btn-text">Start Demo</span>
+            <span class="btn-loading" hidden>Connecting...</span>
+        </button>
+
+        <!-- Queue Position (shown when waiting) -->
+        <div class="queue-position" id="queue-position" hidden>
+            <p>You're #<span id="position-number">1</span> in line</p>
+            <p class="wait-time">Estimated wait: <span id="wait-time">45 minutes</span></p>
+            <button class="leave-queue-btn" id="leave-queue-btn">Leave Queue</button>
+        </div>
+    </section>
+
+    <!-- Scenarios Section -->
+    <section class="scenarios">
+        <h2>Guided Scenarios</h2>
+        <p class="section-intro">Step-by-step walkthroughs to explore JIRA automation</p>
+
+        <div class="scenario-cards">
+            <div class="scenario-card">
+                <div class="card-icon">📝</div>
+                <h3>Issue Management</h3>
+                <p>Create, update, assign, and close issues using natural language</p>
+                <span class="duration">~5 min</span>
+            </div>
+
+            <div class="scenario-card">
+                <div class="card-icon">🔍</div>
+                <h3>JQL Search</h3>
+                <p>Find issues without memorizing JQL syntax</p>
+                <span class="duration">~5 min</span>
+            </div>
+
+            <div class="scenario-card">
+                <div class="card-icon">🏃</div>
+                <h3>Agile & Sprints</h3>
+                <p>Manage backlogs, sprints, epics, and story points</p>
+                <span class="duration">~10 min</span>
+            </div>
+
+            <div class="scenario-card">
+                <div class="card-icon">🎫</div>
+                <h3>Service Desk</h3>
+                <p>Handle service requests, SLAs, and customer responses</p>
+                <span class="duration">~7 min</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sample Commands Section -->
+    <section class="commands">
+        <h2>What You Can Say</h2>
+
+        <div class="command-examples">
+            <div class="command">
+                <code>claude "Show me all open bugs in project DEMO"</code>
+            </div>
+            <div class="command">
+                <code>claude "Create a high priority bug: Login button not working"</code>
+            </div>
+            <div class="command">
+                <code>claude "Move DEMO-5 to In Progress"</code>
+            </div>
+            <div class="command">
+                <code>claude "What's blocking the release?"</code>
+            </div>
+            <div class="command">
+                <code>claude "Log 2 hours on DEMO-3: Fixed authentication"</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <h2>What's Included</h2>
+
+        <div class="feature-grid">
+            <div class="feature">
+                <span class="feature-icon">🤖</span>
+                <h3>14 JIRA Skills</h3>
+                <p>Issue management, search, agile, time tracking, service desk, and more</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">☁️</span>
+                <h3>Live JIRA Sandbox</h3>
+                <p>Pre-configured Atlassian Cloud instance with sample data</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">⏱️</span>
+                <h3>1 Hour Session</h3>
+                <p>Plenty of time to explore all capabilities</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🔄</span>
+                <h3>Auto-Reset</h3>
+                <p>Sandbox resets after each session - experiment freely!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>
+            <a href="https://github.com/grandcamel/jira-assistant-skills" target="_blank">JIRA Assistant Skills</a>
+            &middot;
+            <a href="https://github.com/grandcamel/jira-assistant-skills/blob/main/LICENSE" target="_blank">MIT License</a>
+            &middot;
+            Built with <a href="https://claude.ai/code" target="_blank">Claude Code</a>
+        </p>
+    </footer>
+
+    <!-- Terminal Overlay (shown when session active) -->
+    <div class="terminal-overlay" id="terminal-overlay" hidden>
+        <div class="terminal-header">
+            <span class="terminal-title">JIRA Assistant Skills Demo</span>
+            <span class="terminal-timer" id="terminal-timer">60:00</span>
+            <button class="terminal-close" id="terminal-close">End Session</button>
+        </div>
+        <iframe id="terminal-iframe" src=""></iframe>
+    </div>
+
+    <script src="queue-client.js"></script>
+</body>
+</html>

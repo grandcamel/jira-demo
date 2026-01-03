@@ -1,0 +1,473 @@
+/* =============================================================================
+   JIRA Assistant Skills Demo - Styles
+   ============================================================================= */
+
+/* Colors - from JIRA Assistant Skills branding */
+:root {
+    --deep-navy: #1a1a2e;
+    --dark-blue: #16213e;
+    --atlassian-blue: #0052CC;
+    --purple: #4a00e0;
+    --cyan: #00C7E6;
+    --light-gray: #e2e8f0;
+    --muted-gray: #94a3b8;
+    --slate: #64748b;
+    --white: #ffffff;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--deep-navy) 0%, var(--dark-blue) 100%);
+    color: var(--white);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+/* Header */
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(26, 26, 46, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.logo img {
+    border-radius: 8px;
+}
+
+nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
+nav a {
+    color: var(--muted-gray);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: var(--white);
+}
+
+/* Hero Section */
+.hero {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+}
+
+.hero h1 {
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: linear-gradient(90deg, var(--white) 0%, var(--cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.tagline {
+    font-size: 1.2rem;
+    color: var(--muted-gray);
+    margin-bottom: 2rem;
+}
+
+/* Queue Status */
+.queue-status {
+    margin-bottom: 1.5rem;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.status-indicator .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted-gray);
+}
+
+.status-indicator.available .dot {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.status-indicator.busy .dot {
+    background: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
+}
+
+.status-indicator.queued .dot {
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+}
+
+/* Start Demo Button */
+.start-demo-btn {
+    background: linear-gradient(90deg, var(--atlassian-blue) 0%, var(--purple) 100%);
+    color: var(--white);
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.start-demo-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 82, 204, 0.4);
+}
+
+.start-demo-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.start-demo-btn .btn-loading {
+    display: none;
+}
+
+.start-demo-btn.loading .btn-text {
+    display: none;
+}
+
+.start-demo-btn.loading .btn-loading {
+    display: inline;
+}
+
+/* Queue Position */
+.queue-position {
+    margin-top: 2rem;
+    padding: 1.5rem 2rem;
+    background: rgba(0, 199, 230, 0.1);
+    border: 1px solid rgba(0, 199, 230, 0.3);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.queue-position p {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.queue-position .wait-time {
+    color: var(--muted-gray);
+    font-size: 0.9rem;
+}
+
+.leave-queue-btn {
+    margin-top: 1rem;
+    background: transparent;
+    color: var(--error);
+    border: 1px solid var(--error);
+    padding: 0.5rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.leave-queue-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Scenarios Section */
+.scenarios {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
+.scenarios h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-intro {
+    text-align: center;
+    color: var(--muted-gray);
+    margin-bottom: 2rem;
+}
+
+.scenario-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.scenario-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.scenario-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--atlassian-blue);
+}
+
+.card-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.scenario-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.scenario-card p {
+    color: var(--muted-gray);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.scenario-card .duration {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: rgba(0, 199, 230, 0.2);
+    color: var(--cyan);
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+/* Commands Section */
+.commands {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
+.commands h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+}
+
+.command-examples {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.command {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    border-left: 3px solid var(--atlassian-blue);
+}
+
+.command code {
+    font-family: 'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--light-gray);
+}
+
+/* Features Section */
+.features {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+}
+
+.features h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.feature {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.feature h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.feature p {
+    color: var(--muted-gray);
+    font-size: 0.85rem;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--slate);
+    font-size: 0.85rem;
+}
+
+footer a {
+    color: var(--muted-gray);
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: var(--white);
+}
+
+/* Terminal Overlay */
+.terminal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--deep-navy);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+}
+
+.terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.terminal-title {
+    font-weight: 600;
+}
+
+.terminal-timer {
+    font-family: 'SF Mono', monospace;
+    color: var(--cyan);
+    padding: 0.25rem 0.75rem;
+    background: rgba(0, 199, 230, 0.2);
+    border-radius: 4px;
+}
+
+.terminal-close {
+    background: transparent;
+    color: var(--error);
+    border: 1px solid var(--error);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.terminal-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+#terminal-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #000;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header-content {
+        padding: 1rem;
+    }
+
+    .logo span {
+        display: none;
+    }
+
+    .hero {
+        padding: 6rem 1rem 3rem;
+    }
+
+    .hero h1 {
+        font-size: 1.6rem;
+    }
+
+    .scenarios,
+    .commands,
+    .features {
+        padding: 2rem 1rem;
+    }
+
+    .scenario-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .command code {
+        font-size: 0.8rem;
+    }
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.status-indicator.busy .dot {
+    animation: pulse 2s infinite;
+}
