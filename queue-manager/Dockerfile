@@ -1,14 +1,19 @@
 # Queue Manager Dockerfile
 FROM node:20-slim
 
-# Install ttyd and Docker CLI
+# Install Docker CLI and other dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ttyd \
     docker.io \
     python3 \
     python3-pip \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Install ttyd from GitHub releases (not available in Debian bookworm repos)
+RUN curl -fsSL -o /usr/local/bin/ttyd \
+    https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 \
+    && chmod +x /usr/local/bin/ttyd
 
 # Install Python dependencies for cleanup script
 RUN pip3 install --break-system-packages \

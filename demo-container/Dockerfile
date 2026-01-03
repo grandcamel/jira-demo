@@ -17,18 +17,25 @@ USER root
 RUN pip3 install --no-cache-dir --break-system-packages \
     jira-assistant-skills-lib>=0.1.5
 
+# Clone JIRA Assistant Skills plugin
+RUN git clone --depth 1 https://github.com/grandcamel/jira-assistant-skills.git /opt/jira-assistant-skills && \
+    mkdir -p /home/devuser/.claude/plugins && \
+    ln -s /opt/jira-assistant-skills/plugins/jira-assistant-skills /home/devuser/.claude/plugins/jira-assistant-skills && \
+    chown -R devuser:node /home/devuser/.claude
+
 # Copy MOTD (welcome message)
 COPY motd /etc/motd
+RUN chmod 644 /etc/motd
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
 
 # Copy guided scenario documentation
 COPY scenarios/ /workspace/scenarios/
 
 # Create demo working directory
-RUN mkdir -p /workspace/demo && chown devuser:devuser /workspace/demo
+RUN mkdir -p /workspace/demo && chown devuser:node /workspace/demo
 
 # Switch back to non-root user
 USER devuser
