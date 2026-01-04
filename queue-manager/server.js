@@ -80,7 +80,7 @@ wss.on('connection', (ws) => {
   ws.on('message', (data) => {
     try {
       const message = JSON.parse(data);
-      handleMessage(ws, message);
+      console.log("Received message:", message); handleMessage(ws, message);
     } catch (err) {
       sendError(ws, 'Invalid message format');
     }
@@ -234,11 +234,12 @@ async function startSession(ws, client) {
       '--once',
       '--writable',
       'docker', 'run', '--rm', '-it',
+      '-e', 'TERM=xterm',
       '-e', `JIRA_API_TOKEN=${process.env.JIRA_API_TOKEN}`,
       '-e', `JIRA_EMAIL=${process.env.JIRA_EMAIL}`,
       '-e', `JIRA_SITE_URL=${process.env.JIRA_SITE_URL}`,
       '-e', `SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES}`,
-      '-v', '/secrets/.claude.json:/home/devuser/.claude/.credentials.json:ro',
+      '-v', '/opt/jira-demo/secrets/.claude.json:/home/devuser/.claude/.credentials.json:ro',
       'jira-demo-container:latest'
     ], {
       stdio: ['pipe', 'pipe', 'pipe']

@@ -1,16 +1,8 @@
 # =============================================================================
 # JIRA Assistant Skills Demo Container
 # =============================================================================
-# Extends claude-devcontainer:enhanced with JIRA skills pre-configured
-# for live demo sessions.
-#
-# Build: docker build -t jira-demo-container:latest .
-# Run:   docker run -it --rm -e JIRA_API_TOKEN=... jira-demo-container:latest
-# =============================================================================
-
 FROM grandcamel/claude-devcontainer:enhanced
 
-# Switch to root for installation
 USER root
 
 # Install additional demo dependencies
@@ -37,17 +29,18 @@ COPY scenarios/ /workspace/scenarios/
 # Create demo working directory
 RUN mkdir -p /workspace/demo && chown devuser:node /workspace/demo
 
-# Switch back to non-root user
+# Ensure cargo bin is in PATH for all shells
+RUN echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.bashrc && \
+    echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.profile
+
 USER devuser
 
-# Set demo-specific environment
 ENV JIRA_PROFILE=demo
 ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 ENV DEMO_SESSION=true
+ENV PATH="/usr/local/cargo/bin:${PATH}"
 
-# Working directory for demo
 WORKDIR /workspace/demo
 
-# Custom entrypoint with session management
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/bin/bash", "-l"]

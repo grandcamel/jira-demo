@@ -471,3 +471,8 @@ footer a:hover {
 .status-indicator.busy .dot {
     animation: pulse 2s infinite;
 }
+
+/* Fix: ensure hidden attribute works */
+.terminal-overlay[hidden] {
+    display: none !important;
+}
