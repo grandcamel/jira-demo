@@ -191,6 +191,11 @@ class QueueClient {
         this.state = 'active';
         this.sessionExpiresAt = new Date(message.expires_at);
 
+        // Set session cookie for Grafana access
+        if (message.session_token) {
+            document.cookie = `grafana_session=${message.session_token}; path=/; SameSite=Lax`;
+        }
+
         // Show terminal overlay
         this.terminalOverlay.hidden = false;
         this.terminalIframe.src = message.terminal_url || '/terminal';
@@ -209,6 +214,9 @@ class QueueClient {
     handleSessionEnded(message) {
         this.state = 'connected';
         this.sessionExpiresAt = null;
+
+        // Clear session cookie
+        document.cookie = 'grafana_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 
         // Hide terminal overlay
         this.terminalOverlay.hidden = true;
