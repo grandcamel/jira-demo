@@ -1,4 +1,4 @@
-.PHONY: dev build deploy logs health reset-sandbox clean
+.PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -79,12 +79,51 @@ ssl-renew:
 	certbot renew
 
 # Maintenance
+check-token:
+	@expires=$$(jq -r '.claudeAiOauth.expiresAt' secrets/.credentials.json 2>/dev/null); \
+	if [ -z "$$expires" ] || [ "$$expires" = "null" ]; then \
+		echo "❌ No OAuth token found in secrets/.credentials.json"; exit 1; \
+	fi; \
+	now=$$(date +%s)000; \
+	remaining=$$(( ($$expires - $$now) / 1000 / 60 )); \
+	if [ $$remaining -lt 0 ]; then \
+		echo "❌ Token EXPIRED ($$(( $$remaining * -1 )) minutes ago)"; exit 1; \
+	elif [ $$remaining -lt 60 ]; then \
+		echo "⚠️  Token expires in $$remaining minutes - renew soon"; \
+	else \
+		echo "✓ Token valid for $$remaining minutes ($$(( $$remaining / 60 )) hours)"; \
+	fi
+
+refresh-token:
+	@mkdir -p secrets
+	@echo "Starting Claude for authentication..."
+	@echo "Exit Claude after login completes (Ctrl+C or type 'exit')"
+	@docker run -it --rm \
+		--entrypoint bash \
+		-v $(PWD)/secrets:/home/devuser/.claude \
+		jira-demo-container:latest \
+		-c "claude"
+	@echo ""
+	@echo "✓ Credentials saved to secrets/"
+	@$(MAKE) check-token
+
 clean:
 	docker-compose down -v
 	docker system prune -f
 
 restart:
 	docker-compose restart
+
+# Observability
+otel-logs:
+	docker-compose logs -f lgtm promtail redis-exporter
+
+otel-reset:
+	@echo "Resetting observability data..."
+	docker-compose stop lgtm
+	docker volume rm jira-demo_lgtm-data || true
+	docker-compose up -d lgtm
+	@echo "LGTM stack restarted with fresh data"
 
 shell-queue:
 	docker-compose exec queue-manager sh
@@ -135,7 +174,13 @@ help:
 	@echo "  make invite-info TOKEN=xxx   - Show invite details"
 	@echo "  make invite-revoke TOKEN=xxx - Revoke an invite"
 	@echo ""
+	@echo "Observability:"
+	@echo "  make otel-logs      - View LGTM stack logs"
+	@echo "  make otel-reset     - Reset observability data"
+	@echo ""
 	@echo "Maintenance:"
+	@echo "  make check-token    - Check Claude OAuth token expiration"
+	@echo "  make refresh-token  - Authenticate and refresh OAuth token"
 	@echo "  make clean          - Remove all containers and volumes"
 	@echo "  make ssl-setup      - Set up SSL with Let's Encrypt"
 	@echo "  make shell-queue    - Open shell in queue manager"

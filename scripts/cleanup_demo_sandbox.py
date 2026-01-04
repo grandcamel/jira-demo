@@ -23,6 +23,8 @@ except ImportError:
     print("Run: pip install jira-assistant-skills-lib")
     sys.exit(1)
 
+from otel_setup import init_telemetry, traced, trace_span, add_span_attribute
+
 
 # =============================================================================
 # Configuration
@@ -49,9 +51,12 @@ SEED_ISSUE_STATES = {
 }
 
 
+@traced("cleanup.delete_user_issues")
 def delete_user_created_issues(client: Any, project_key: str, dry_run: bool = False) -> int:
     """Delete all issues created by demo users (key > SEED_ISSUE_COUNT)."""
     deleted_count = 0
+    add_span_attribute("project.key", project_key)
+    add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning up user-created issues in {project_key}...")
 
@@ -95,9 +100,11 @@ def delete_user_created_issues(client: Any, project_key: str, dry_run: bool = Fa
     return deleted_count
 
 
+@traced("cleanup.reset_seed_issues")
 def reset_seed_issues(client: Any, dry_run: bool = False) -> int:
     """Reset seed issues to their initial state."""
     reset_count = 0
+    add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Resetting seed issues...")
 
@@ -156,9 +163,12 @@ def reset_seed_issues(client: Any, dry_run: bool = False) -> int:
     return reset_count
 
 
+@traced("cleanup.delete_comments")
 def delete_comments(client: Any, project_key: str, dry_run: bool = False) -> int:
     """Delete all comments on seed issues."""
     deleted_count = 0
+    add_span_attribute("project.key", project_key)
+    add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning up comments in {project_key}...")
 
@@ -194,9 +204,12 @@ def delete_comments(client: Any, project_key: str, dry_run: bool = False) -> int
     return deleted_count
 
 
+@traced("cleanup.delete_worklogs")
 def delete_worklogs(client: Any, project_key: str, dry_run: bool = False) -> int:
     """Delete all worklogs on seed issues."""
     deleted_count = 0
+    add_span_attribute("project.key", project_key)
+    add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning up worklogs in {project_key}...")
 
@@ -242,6 +255,9 @@ Examples:
     parser.add_argument("--full", action="store_true", help="Also delete seed issues (requires re-seeding)")
     parser.add_argument("--profile", default="demo", help="JIRA profile to use (default: demo)")
     args = parser.parse_args()
+
+    # Initialize OpenTelemetry tracing
+    init_telemetry("jira-demo-cleanup")
 
     try:
         client = get_jira_client(profile=args.profile)

@@ -25,6 +25,10 @@ make logs             # View all container logs
 make logs-queue       # View queue manager logs
 make health           # Check system health
 
+# Observability (Grafana + LGTM stack)
+make otel-logs        # View LGTM stack logs
+make otel-reset       # Reset observability data (fresh start)
+
 # JIRA Sandbox
 make reset-sandbox    # Reset JIRA sandbox to initial state (deletes user-created issues)
 make seed-sandbox     # Seed JIRA sandbox with demo data
@@ -59,7 +63,10 @@ nginx (reverse proxy) --> queue-manager (Node.js) --> ttyd --> demo-container
 
 - **queue-manager/** - Node.js Express + WebSocket server managing single-user demo sessions. Spawns ttyd processes that run demo containers. Uses Redis for queue persistence.
 
-- **demo-container/** - Docker image based on `grandcamel/claude-devcontainer:enhanced`. Pre-installs JIRA Assistant Skills plugin and guided scenario docs in `/workspace/scenarios/`.
+- **demo-container/** - Docker image based on `grandcamel/claude-devcontainer:enhanced`. Pre-installs JIRA Assistant Skills plugin and guided scenario docs in `/workspace/scenarios/`. Presents an interactive startup menu:
+  1. **View Scenarios** - Browse guided walkthroughs (issue, search, agile, JSM)
+  2. **Start Claude** - Launches `claude --dangerously-skip-permissions` for hands-free demo
+  3. **Start Bash Shell** - Drop to shell for manual exploration
 
 - **scripts/** - Python scripts using `jira-assistant-skills-lib`:
   - `cleanup_demo_sandbox.py` - Deletes user-created issues (key > 10), resets seed issues to initial state
@@ -70,7 +77,7 @@ nginx (reverse proxy) --> queue-manager (Node.js) --> ttyd --> demo-container
 Invite-based access control for demo sessions:
 
 1. Generate invite: `make invite EXPIRES=7d`
-2. User opens `/?invite=TOKEN`
+2. User opens `/{TOKEN}` (e.g., `http://localhost:8080/FgVGfThU2KOPsxkT`)
 3. Server validates invite when joining queue
 4. On session end, invite marked as "used" with session details
 
@@ -106,6 +113,12 @@ MAX_QUEUE_SIZE=10           # Optional, default 10
 - `secrets/.credentials.json` - OAuth tokens (copy from `~/.claude/.credentials.json`)
 - `secrets/.claude.json` - Config/settings (copy from `~/.claude/.claude.json`)
 
+**Token management:**
+```bash
+make check-token    # Check if OAuth token is expired or expiring soon
+make refresh-token  # Launch Claude in container to re-authenticate (writes to secrets/)
+```
+
 ## Docker Compose Files
 
 - `docker-compose.yml` - Production config (ports 80/443, SSL)
@@ -118,3 +131,35 @@ Use together for dev: `docker-compose -f docker-compose.yml -f docker-compose.de
 Projects: DEMO (Scrum), DEMOSD (JSM Service Desk)
 
 Seed issues DEMO-1 through DEMO-10 are preserved during cleanup. Issues with higher keys are deleted between sessions.
+
+## Observability
+
+Integrated LGTM (Loki, Grafana, Tempo, Mimir/Prometheus) stack for full observability:
+
+```
+queue-manager (OTLP) --> lgtm:4318 --> Grafana dashboards
+nginx (JSON logs) --> promtail --> Loki
+redis --> redis-exporter --> Prometheus
+```
+
+**Access:** `/grafana/` during active demo sessions (auth via session cookie)
+
+**Components:**
+- **Prometheus** - Metrics from queue-manager and Redis
+- **Tempo** - Distributed traces from demo operations
+- **Loki** - Logs from nginx and application containers
+- **Grafana** - Unified dashboards
+
+**Pre-built dashboards:**
+- Queue Operations - queue size, wait times, invite validation
+- Session Analytics - duration, spawn latency, cleanup times
+- System Overview - Redis metrics, error rates
+
+**Custom metrics:**
+- `jira_demo_queue_size` - Current queue length
+- `jira_demo_sessions_active` - Active session count
+- `jira_demo_sessions_started_total` - Session start counter
+- `jira_demo_session_duration_seconds` - Session duration histogram
+- `jira_demo_invites_validated_total` - Invite validation by status
+
+**Config files:** `observability/` directory contains all LGTM configuration.

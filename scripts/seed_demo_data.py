@@ -22,6 +22,8 @@ except ImportError:
     print("Run: pip install jira-assistant-skills-lib")
     sys.exit(1)
 
+from otel_setup import init_telemetry, traced, add_span_attribute
+
 
 # =============================================================================
 # Seed Data Configuration
@@ -125,9 +127,12 @@ DEMOSD_REQUESTS = [
 ]
 
 
+@traced("seed.create_demo_issues")
 def create_demo_issues(client: Any, dry_run: bool = False) -> list[str]:
     """Create seed issues in DEMO project."""
     created_keys = []
+    add_span_attribute("project.key", DEMO_PROJECT)
+    add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating issues in {DEMO_PROJECT}...")
 
@@ -188,9 +193,12 @@ def create_demo_issues(client: Any, dry_run: bool = False) -> list[str]:
     return created_keys
 
 
+@traced("seed.create_demo_requests")
 def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
     """Create seed requests in DEMOSD service desk."""
     created_keys = []
+    add_span_attribute("project.key", DEMO_SERVICE_DESK)
+    add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating requests in {DEMO_SERVICE_DESK}...")
 
@@ -244,6 +252,9 @@ Examples:
     parser.add_argument("--dry-run", action="store_true", help="Show what would be created without making changes")
     parser.add_argument("--profile", default="demo", help="JIRA profile to use (default: demo)")
     args = parser.parse_args()
+
+    # Initialize OpenTelemetry tracing
+    init_telemetry("jira-demo-seed")
 
     try:
         client = get_jira_client(profile=args.profile)

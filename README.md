@@ -6,9 +6,13 @@ One-click live demo for [JIRA Assistant Skills](https://github.com/grandcamel/ji
 
 - **Web Terminal**: Browser-based Claude Code terminal via ttyd
 - **Queue System**: Single-user sessions with waitlist
+- **Invite Access**: Token-based URLs for controlled demo access
+- **Interactive Menu**: Choose scenarios, start Claude, or use bash shell
 - **Pre-configured**: Claude OAuth + JIRA sandbox ready to use
-- **Guided Scenarios**: Issue management, JQL search, Agile, JSM
+- **Guided Scenarios**: Issue management, JQL search, Agile, JSM, observability (rendered with [glow](https://github.com/charmbracelet/glow))
+- **Hands-free Mode**: Claude runs with `--dangerously-skip-permissions` for seamless demos
 - **Auto-cleanup**: JIRA sandbox resets between sessions
+- **Full Observability**: Integrated Grafana dashboards with metrics, traces, and logs
 
 ## Architecture
 
@@ -18,11 +22,15 @@ Internet --> nginx (SSL) --> DigitalOcean Droplet
     +-- /           --> Landing Page
     +-- /terminal   --> ttyd WebSocket
     +-- /api        --> Queue Manager
+    +-- /grafana    --> Observability Dashboards
     |
     Docker
     +-- demo-container (claude-devcontainer + jira-skills)
-    +-- queue-manager (Node.js)
+    +-- queue-manager (Node.js + OpenTelemetry)
     +-- redis (queue state)
+    +-- lgtm (Grafana, Prometheus, Tempo, Loki)
+    +-- promtail (log shipping)
+    +-- redis-exporter (Redis metrics)
 ```
 
 ## Quick Start (Local Development)
@@ -127,13 +135,20 @@ The demo uses a pre-configured JIRA sandbox at `jasonkrue.atlassian.net`:
 
 ### DEMO Project (Scrum)
 
-| Key | Type | Summary | Status |
-|-----|------|---------|--------|
-| DEMO-1 | Epic | Product Launch | Open |
-| DEMO-2 | Story | User Authentication | Open |
-| DEMO-3 | Bug | Login fails on mobile | Open |
-| DEMO-4 | Task | Update documentation | To Do |
-| DEMO-5 | Story | Dashboard redesign | In Progress |
+| Key | Type | Summary |
+|-----|------|---------|
+| DEMO-1 | Epic | Product Launch |
+| DEMO-2 | Story | User Authentication |
+| DEMO-3 | Bug | Login fails on mobile Safari |
+| DEMO-4 | Task | Update API documentation |
+| DEMO-5 | Story | Dashboard redesign |
+| DEMO-6 | Task | Performance optimization |
+| DEMO-7 | Story | Add dark mode support |
+| DEMO-8 | Bug | Search pagination bug |
+| DEMO-9 | Story | Email notification settings |
+| DEMO-10 | Task | Security audit preparation |
+
+Seed issues DEMO-1 through DEMO-10 are preserved during cleanup. User-created issues (key > 10) are deleted between sessions.
 
 ### DEMOSD Service Desk (JSM)
 
@@ -164,6 +179,7 @@ jira-demo/
 ├── landing-page/           # Static HTML/CSS/JS
 ├── queue-manager/          # Node.js WebSocket server
 ├── demo-container/         # Docker container config
+├── observability/          # LGTM stack configuration
 ├── scripts/                # Deployment & maintenance
 ├── secrets/                # Credentials (.gitignored)
 └── docs/                   # Documentation
@@ -172,12 +188,20 @@ jira-demo/
 ### Make Commands
 
 ```bash
-make dev          # Start local development
-make build        # Build all containers
-make deploy       # Deploy to production
-make logs         # View logs
+make dev           # Start local development
+make build         # Build all containers
+make deploy        # Deploy to production
+make logs          # View logs
 make reset-sandbox # Reset JIRA sandbox
-make health       # Check system health
+make health        # Check system health
+make otel-logs     # View LGTM stack logs
+make otel-reset    # Reset observability data
+
+# Invite Management
+make invite                      # Generate invite (default 48h)
+make invite EXPIRES=7d           # Generate with custom expiration
+make invite-list                 # List all invites
+make invite-revoke TOKEN=abc123  # Revoke an invite
 ```
 
 ### Testing Locally
@@ -186,18 +210,43 @@ make health       # Check system health
 # Start in development mode (no SSL)
 make dev
 
-# Test the landing page
-open http://localhost:8080
-
-# Test the terminal directly
-open http://localhost:7681
+# Generate an invite and open it
+make invite
+# Opens: http://localhost:8080/{TOKEN}
 ```
+
+## Observability
+
+Integrated LGTM (Loki, Grafana, Tempo, Mimir/Prometheus) stack accessible during active demo sessions at `/grafana/`.
+
+### Pre-built Dashboards
+
+- **Queue Operations**: queue size, wait times, invite validation rates
+- **Session Analytics**: session duration, TTYd spawn latency, cleanup times
+- **System Overview**: Redis metrics, container health, error rates
+
+### Make Commands
+
+```bash
+make otel-logs   # View LGTM stack logs
+make otel-reset  # Reset observability data (fresh start)
+```
+
+### Custom Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `jira_demo_queue_size` | Current queue length |
+| `jira_demo_sessions_active` | Active session count |
+| `jira_demo_sessions_started_total` | Total sessions started |
+| `jira_demo_session_duration_seconds` | Session duration histogram |
+| `jira_demo_invites_validated_total` | Invite validation by status |
 
 ## Monitoring
 
 - **Uptime**: UptimeRobot monitoring https://demo.jira-skills.dev/health
 - **Logs**: `make logs` or `docker-compose logs -f`
-- **Metrics**: DigitalOcean Droplet Metrics dashboard
+- **Metrics**: Grafana dashboards at `/grafana/` during sessions
 
 ## Cost
 
