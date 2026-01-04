@@ -34,11 +34,13 @@ cd jira-demo
 
 # Copy example secrets
 cp secrets/example.env secrets/.env
+cp secrets/example.credentials.json secrets/.credentials.json
 cp secrets/example.claude.json secrets/.claude.json
 
 # Edit secrets with your credentials
 # - secrets/.env: JIRA credentials
-# - secrets/.claude.json: Claude OAuth tokens
+# - secrets/.credentials.json: Claude OAuth tokens (from ~/.claude/.credentials.json)
+# - secrets/.claude.json: Claude config (from ~/.claude/.claude.json)
 
 # Start services
 make dev
@@ -69,8 +71,11 @@ cd /opt/jira-demo
 cp secrets/example.env secrets/.env
 vim secrets/.env  # Add JIRA credentials
 
+cp secrets/example.credentials.json secrets/.credentials.json
+vim secrets/.credentials.json  # Add Claude OAuth tokens
+
 cp secrets/example.claude.json secrets/.claude.json
-vim secrets/.claude.json  # Add Claude OAuth tokens
+vim secrets/.claude.json  # Add Claude config
 
 # Deploy
 make deploy
@@ -106,15 +111,14 @@ MAX_QUEUE_SIZE=10
 DOMAIN=demo.jira-skills.dev
 ```
 
-### Claude OAuth (secrets/.claude.json)
+### Claude Files
 
-Run `claude login` on your local machine, then copy the credentials:
+Run `claude login` on your local machine, then copy both files:
 
 ```bash
-# On your local machine
-cat ~/.claude/.credentials.json
-
-# Copy the output to secrets/.claude.json on the server
+# On your local machine - copy both files to secrets/
+cp ~/.claude/.credentials.json secrets/.credentials.json
+cp ~/.claude/.claude.json secrets/.claude.json
 ```
 
 ## JIRA Sandbox

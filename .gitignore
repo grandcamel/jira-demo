@@ -1,6 +1,7 @@
 # Secrets (NEVER commit)
 secrets/.env
 secrets/.claude.json
+secrets/.credentials.json
 secrets/jira.env
 *.pem
 *.key
