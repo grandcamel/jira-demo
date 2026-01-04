@@ -12,8 +12,15 @@ services:
       - ./nginx/demo.conf:/etc/nginx/conf.d/default.conf:ro
       - ./landing-page:/var/www/html:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - nginx-logs:/var/log/nginx
+    # Override default symlinks to /dev/stdout so logs go to actual files for promtail
+    command: >
+      sh -c "rm -f /var/log/nginx/access.log /var/log/nginx/error.log &&
+             touch /var/log/nginx/access.log /var/log/nginx/error.log &&
+             nginx -g 'daemon off;'"
     depends_on:
       - queue-manager
+      - lgtm
     restart: unless-stopped
     networks:
       - demo-network
@@ -33,6 +40,11 @@ services:
       - JIRA_API_TOKEN=${JIRA_API_TOKEN}
       - JIRA_EMAIL=${JIRA_EMAIL}
       - JIRA_SITE_URL=${JIRA_SITE_URL}
+      - OTEL_SERVICE_NAME=jira-demo-queue-manager
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./secrets:/secrets:ro
@@ -40,6 +52,7 @@ services:
       - ./scripts:/opt/scripts:ro
     depends_on:
       - redis
+      - lgtm
     restart: unless-stopped
     networks:
       - demo-network
@@ -63,9 +76,75 @@ services:
         max-size: "5m"
         max-file: "2"
 
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: jira-demo-lgtm
+    environment:
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_PROXY_ENABLED=true
+      - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
+      - GF_AUTH_PROXY_HEADER_PROPERTY=username
+      - GF_AUTH_PROXY_AUTO_SIGN_UP=true
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./observability/otelcol-config.yaml:/otel-lgtm/otelcol-config.yaml:ro
+      - ./observability/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
+      - ./observability/loki-config.yaml:/otel-lgtm/loki-config.yaml:ro
+      - ./observability/tempo-config.yaml:/otel-lgtm/tempo-config.yaml:ro
+      - ./observability/grafana-datasources.yaml:/otel-lgtm/grafana-datasources.yaml:ro
+      - ./observability/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./observability/dashboards:/var/lib/grafana/dashboards:ro
+      - lgtm-data:/data
+    restart: unless-stopped
+    networks:
+      - demo-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: jira-demo-redis-exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - demo-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: jira-demo-promtail
+    volumes:
+      - ./observability/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - nginx-logs:/var/log/nginx:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - lgtm
+    restart: unless-stopped
+    networks:
+      - demo-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
 networks:
   demo-network:
     driver: bridge
 
 volumes:
   redis-data:
+  lgtm-data:
+  nginx-logs:

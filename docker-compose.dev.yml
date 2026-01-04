@@ -11,6 +11,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/demo.dev.conf:/etc/nginx/conf.d/default.conf:ro
       - ./landing-page:/var/www/html:ro
+      - nginx-logs:/var/log/nginx
       # No SSL certificates for local dev
 
   queue-manager:
@@ -24,8 +25,26 @@ services:
       - NODE_ENV=development
       - CLAUDE_CREDENTIALS_PATH=${PWD}/secrets/.credentials.json
       - CLAUDE_CONFIG_PATH=${PWD}/secrets/.claude.json
-    command: ["node", "--watch", "server.js"]
+      - OTEL_LOG_LEVEL=debug
+    command: ["node", "--watch", "--require", "./instrumentation.js", "server.js"]
 
   redis:
     ports:
       - "6379:6379"
+
+  lgtm:
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_LOG_LEVEL=debug
+    ports:
+      - "3001:3000"   # Grafana UI for direct access in dev
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+
+  redis-exporter:
+    ports:
+      - "9121:9121"   # Redis metrics for debugging
+
+volumes:
+  nginx-logs:
