@@ -27,8 +27,8 @@ RUN mkdir -p /workspace/demo && chown devuser:node /workspace/demo
 RUN echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.bashrc && \
     echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.profile
 
-# Remove zoxide init from bashrc (not installed in this image)
-RUN sed -i '/zoxide/d' /home/devuser/.bashrc 2>/dev/null || true
+# Remove zoxide references from bashrc (not installed in this image)
+RUN sed -i '/zoxide/d; /alias cd="z"/d' /home/devuser/.bashrc 2>/dev/null || true
 
 USER devuser
 
