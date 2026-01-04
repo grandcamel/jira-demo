@@ -74,6 +74,33 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Invite validation endpoint (used by nginx auth_request)
+app.get('/api/invite/validate', async (req, res) => {
+  // Token can come from query param, header, or extracted from X-Original-URI
+  let token = req.query.token || req.query.invite || req.headers['x-invite-token'];
+
+  // If no token yet, try to extract from X-Original-URI (used by nginx auth_request)
+  if (!token && req.headers['x-original-uri']) {
+    const originalUri = req.headers['x-original-uri'];
+    const match = originalUri.match(/[?&]invite=([^&]+)/);
+    if (match) {
+      token = decodeURIComponent(match[1]);
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ valid: false, reason: 'missing', message: 'Invite token required' });
+  }
+
+  const validation = await validateInvite(token);
+
+  if (validation.valid) {
+    res.status(200).json({ valid: true });
+  } else {
+    res.status(401).json({ valid: false, reason: validation.reason, message: validation.message });
+  }
+});
+
 // =============================================================================
 // WebSocket Handlers
 // =============================================================================
