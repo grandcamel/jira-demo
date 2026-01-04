@@ -90,18 +90,128 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Install JIRA Assistant Skills plugin from marketplace
-echo -e "${CYAN}Setting up plugins...${NC}"
-claude plugin marketplace add grandcamel/jira-assistant-skills >/dev/null 2>&1 || true
-if claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1; then
-    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills ready"
+# Install JIRA Assistant Skills CLI from PyPI
+echo -e "${CYAN}Installing JIRA Assistant Skills...${NC}"
+if pip install --quiet --no-cache-dir jira-assistant-skills 2>/dev/null; then
+    CLI_VERSION=$(pip show jira-assistant-skills 2>/dev/null | grep Version | cut -d' ' -f2)
+    echo -e "  ${GREEN}✓${NC} jira CLI v${CLI_VERSION} installed"
+else
+    echo -e "  ${YELLOW}⚠${NC} CLI installation failed"
+fi
+
+# Install JIRA Assistant Skills plugin from marketplace (clear all plugin cache first)
+rm -rf ~/.claude/plugins 2>/dev/null || true
+# Use main branch to get latest (v2.2.0 tag has invalid assistant_skills key)
+claude plugin marketplace add https://github.com/grandcamel/jira-assistant-skills.git#main >/dev/null 2>&1 || true
+claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1 || true
+# Verify installation
+INSTALLED_VERSION=$(cat ~/.claude/plugins/cache/*/jira-assistant-skills/*/plugin.json 2>/dev/null | jq -r '.version' | head -1)
+if [ -n "$INSTALLED_VERSION" ]; then
+    echo -e "  ${GREEN}✓${NC} Claude plugin v${INSTALLED_VERSION} ready"
 else
     echo -e "  ${YELLOW}⚠${NC} Plugin installation failed (will retry on first use)"
 fi
 echo ""
+echo -e "${YELLOW}Press Enter to continue...${NC}"
+read -r
 
-echo -e "${GREEN}Ready! Type 'claude' followed by your request, or try the examples above.${NC}"
-echo ""
+# =============================================================================
+# Interactive Startup Menu
+# =============================================================================
 
-# Start the shell
-exec "$@"
+show_menu() {
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║                    JIRA Assistant Demo                        ║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}1)${NC} View Scenarios                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}2)${NC} Start Claude (interactive mode)                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}3)${NC} Start Bash Shell                                         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}q)${NC} Exit                                                     ${CYAN}║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+show_scenarios_menu() {
+    echo ""
+    echo -e "${CYAN}Available Scenarios:${NC}"
+    echo -e "  ${GREEN}1)${NC} Issue Management  - Create, update, transition issues"
+    echo -e "  ${GREEN}2)${NC} Search & JQL      - Find issues, build queries"
+    echo -e "  ${GREEN}3)${NC} Agile Workflows   - Sprints, epics, story points"
+    echo -e "  ${GREEN}4)${NC} Service Desk      - JSM requests, SLAs, queues"
+    echo -e "  ${GREEN}5)${NC} Observability     - Explore Grafana dashboards"
+    echo -e "  ${GREEN}b)${NC} Back to main menu"
+    echo ""
+}
+
+view_scenario() {
+    local file="$1"
+    if [ -f "$file" ]; then
+        clear
+        # Use glow for beautiful markdown rendering
+        glow -p "$file"
+    else
+        echo -e "${RED}Scenario file not found: $file${NC}"
+        sleep 2
+    fi
+}
+
+scenarios_loop() {
+    while true; do
+        clear
+        cat /etc/motd
+        show_scenarios_menu
+        read -rp "Select scenario: " choice
+        case $choice in
+            1) view_scenario "/workspace/scenarios/issue.md" ;;
+            2) view_scenario "/workspace/scenarios/search.md" ;;
+            3) view_scenario "/workspace/scenarios/agile.md" ;;
+            4) view_scenario "/workspace/scenarios/jsm.md" ;;
+            5) view_scenario "/workspace/scenarios/observability.md" ;;
+            b|B) return ;;
+            *) echo -e "${YELLOW}Invalid option${NC}"; sleep 1 ;;
+        esac
+    done
+}
+
+main_menu_loop() {
+    while true; do
+        clear
+        cat /etc/motd
+        show_menu
+        read -rp "Select option: " choice
+        case $choice in
+            1)
+                scenarios_loop
+                ;;
+            2)
+                clear
+                echo -e "${GREEN}Starting Claude in interactive mode...${NC}"
+                echo -e "${YELLOW}Tip: Type 'exit' or press Ctrl+C to return to menu${NC}"
+                echo ""
+                claude --dangerously-skip-permissions "Hello, JIRA!" || true
+                echo ""
+                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
+                read -r
+                ;;
+            3)
+                clear
+                echo -e "${GREEN}Starting Bash shell...${NC}"
+                echo -e "${YELLOW}Tip: Type 'exit' to return to menu${NC}"
+                echo -e "${YELLOW}     Run 'claude --dangerously-skip-permissions' to start Claude${NC}"
+                echo ""
+                /bin/bash -l || true
+                ;;
+            q|Q)
+                echo -e "${GREEN}Goodbye! Thanks for trying JIRA Assistant Skills.${NC}"
+                exit 0
+                ;;
+            *)
+                echo -e "${YELLOW}Invalid option${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# Start the interactive menu
+main_menu_loop
