@@ -31,6 +31,12 @@ class QueueClient {
         this.errorMessage = document.getElementById('error-message');
         this.heroSection = document.querySelector('.hero');
 
+        // Check for invite token before proceeding
+        if (!this.inviteToken) {
+            this.showInviteRequired();
+            return;
+        }
+
         this.bindEvents();
         this.connect();
     }
@@ -38,6 +44,22 @@ class QueueClient {
     getInviteToken() {
         const params = new URLSearchParams(window.location.search);
         return params.get('invite') || null;
+    }
+
+    showInviteRequired() {
+        this.errorTitle.textContent = 'Invite Required';
+        this.errorMessage.textContent = 'You need a valid invite link to access this demo. Please contact the administrator for an invite.';
+
+        if (this.heroSection) {
+            this.heroSection.hidden = true;
+        }
+        // Hide other sections too
+        document.querySelectorAll('.scenarios, .commands, .features').forEach(el => {
+            el.hidden = true;
+        });
+        if (this.inviteError) {
+            this.inviteError.hidden = false;
+        }
     }
 
     bindEvents() {
@@ -227,10 +249,13 @@ class QueueClient {
         this.errorTitle.textContent = titles[message.reason] || 'Invalid Invite';
         this.errorMessage.textContent = message.message || 'This invite link is not valid.';
 
-        // Hide hero section and show error
+        // Hide all content and show error
         if (this.heroSection) {
             this.heroSection.hidden = true;
         }
+        document.querySelectorAll('.scenarios, .commands, .features').forEach(el => {
+            el.hidden = true;
+        });
         if (this.inviteError) {
             this.inviteError.hidden = false;
         }
