@@ -42,9 +42,9 @@ class QueueClient {
     }
 
     getInviteToken() {
-        // Token is in the URL path: /TOKEN
+        // Token is in the URL path: /TOKEN (4-64 chars, URL-safe)
         const path = window.location.pathname;
-        const match = path.match(/^\/([A-Za-z0-9_-]{16})$/);
+        const match = path.match(/^\/([A-Za-z0-9_-]{4,64})$/);
         return match ? match[1] : null;
     }
 

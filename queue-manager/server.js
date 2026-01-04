@@ -234,7 +234,8 @@ async function joinQueue(ws, client, inviteToken) {
 // =============================================================================
 
 async function validateInvite(token) {
-  if (!token || token.length < 10) {
+  // Token must be 4-64 chars, URL-safe characters only
+  if (!token || !/^[A-Za-z0-9_-]{4,64}$/.test(token)) {
     return {
       valid: false,
       reason: 'invalid',

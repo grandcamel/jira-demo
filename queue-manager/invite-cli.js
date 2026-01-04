@@ -7,6 +7,7 @@
  * Usage:
  *   node invite-cli.js generate --expires 48h
  *   node invite-cli.js generate --expires 7d --label "Workshop"
+ *   node invite-cli.js generate --expires 7d --token "VIP-JOHN" --label "VIP John"
  *   node invite-cli.js list [--status pending|used|expired|revoked]
  *   node invite-cli.js info <token>
  *   node invite-cli.js revoke <token>
@@ -61,12 +62,29 @@ function generateToken() {
   return crypto.randomBytes(12).toString('base64url');
 }
 
+function validateCustomToken(token) {
+  // Must be 4-64 chars, URL-safe (alphanumeric, dash, underscore)
+  if (!/^[A-Za-z0-9_-]{4,64}$/.test(token)) {
+    throw new Error('Custom token must be 4-64 characters, using only A-Z, a-z, 0-9, dash, and underscore');
+  }
+  return token;
+}
+
 // =============================================================================
 // Commands
 // =============================================================================
 
 async function generate(options) {
-  const token = generateToken();
+  // Use custom token if provided, otherwise generate random one
+  const token = options.token ? validateCustomToken(options.token) : generateToken();
+
+  // Check if token already exists
+  const existing = await redis.get(`invite:${token}`);
+  if (existing) {
+    console.error(`\nError: Token "${token}" already exists. Use a different token or revoke the existing one.\n`);
+    process.exit(1);
+  }
+
   const now = new Date();
   const expiresMs = parseDuration(options.expires || DEFAULT_EXPIRES);
   const expiresAt = new Date(now.getTime() + expiresMs);
@@ -229,6 +247,7 @@ Commands:
   generate              Create a new invite URL
     --expires <duration>  Expiration time (default: 48h)
                          Formats: 30m, 48h, 7d, 2w
+    --token <token>      Custom token for VIP users (4-64 chars, URL-safe)
     --label <text>       Optional label for identification
 
   list                  List all invites
@@ -240,6 +259,7 @@ Commands:
 
 Examples:
   node invite-cli.js generate --expires 7d --label "Conference demo"
+  node invite-cli.js generate --expires 30d --token "VIP-JOHN" --label "VIP John"
   node invite-cli.js list --status pending
   node invite-cli.js info abc123
   node invite-cli.js revoke abc123
