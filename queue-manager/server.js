@@ -352,7 +352,7 @@ async function startSession(ws, client) {
       '-e', `JIRA_SITE_URL=${process.env.JIRA_SITE_URL}`,
       '-e', `SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES}`,
       '-v', `${CLAUDE_CREDENTIALS_PATH}:/home/devuser/.claude/.credentials.json:ro`,
-      '-v', `${CLAUDE_CONFIG_PATH}:/home/devuser/.claude/.claude.json:ro`,
+      '-v', `${CLAUDE_CONFIG_PATH}:/home/devuser/.claude/.claude.json`,
       'jira-demo-container:latest'
     ], {
       stdio: ['pipe', 'pipe', 'pipe']
@@ -538,7 +538,7 @@ async function recordInviteUsage(session, endedAt, endReason) {
 function runSandboxCleanup() {
   console.log('Running JIRA sandbox cleanup...');
 
-  const cleanup = spawn('python', ['/opt/scripts/cleanup_demo_sandbox.py'], {
+  const cleanup = spawn('python3', ['/opt/scripts/cleanup_demo_sandbox.py'], {
     env: {
       ...process.env,
       JIRA_API_TOKEN: process.env.JIRA_API_TOKEN,

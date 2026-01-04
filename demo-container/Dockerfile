@@ -11,9 +11,16 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 
 # Clone JIRA Assistant Skills plugin
 RUN git clone --depth 1 https://github.com/grandcamel/jira-assistant-skills.git /opt/jira-assistant-skills && \
-    mkdir -p /home/devuser/.claude/plugins && \
-    ln -s /opt/jira-assistant-skills/plugins/jira-assistant-skills /home/devuser/.claude/plugins/jira-assistant-skills && \
-    chown -R devuser:node /home/devuser/.claude
+    chown -R devuser:node /opt/jira-assistant-skills
+
+# Switch to devuser to install plugin properly
+USER devuser
+
+# Install the plugin via Claude CLI marketplace system
+RUN claude plugin marketplace add /opt/jira-assistant-skills && \
+    claude plugin install jira-assistant-skills@jira-assistant-skills --scope user
+
+USER root
 
 # Copy MOTD (welcome message)
 COPY motd /etc/motd
@@ -32,6 +39,9 @@ RUN mkdir -p /workspace/demo && chown devuser:node /workspace/demo
 # Ensure cargo bin is in PATH for all shells
 RUN echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.bashrc && \
     echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.profile
+
+# Remove zoxide init from bashrc (not installed in this image)
+RUN sed -i '/zoxide/d' /home/devuser/.bashrc 2>/dev/null || true
 
 USER devuser
 
