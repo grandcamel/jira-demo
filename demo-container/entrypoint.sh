@@ -22,14 +22,19 @@ SESSION_TIMEOUT_SECONDS=$((SESSION_TIMEOUT_MINUTES * 60))
 clear
 cat /etc/motd
 
-# Install JIRA Assistant Skills plugin (if not already installed)
+# Install JIRA Assistant Skills plugin
 echo -e "${CYAN}Setting up plugins...${NC}"
-if ! claude plugin list 2>/dev/null | grep -q "jira-assistant-skills"; then
-    claude plugin marketplace add /opt/jira-assistant-skills >/dev/null 2>&1
-    claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1
-    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills installed"
+# Pull latest plugin code
+(cd /opt/jira-assistant-skills && git pull -q 2>/dev/null) || true
+# Install plugin (marketplace add is idempotent, install overwrites)
+if claude plugin marketplace add /opt/jira-assistant-skills >/dev/null 2>&1 || true; then
+    if claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1; then
+        echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills installed"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Plugin installation failed (will retry on first use)"
+    fi
 else
-    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills ready"
+    echo -e "  ${YELLOW}⚠${NC} Plugin setup failed"
 fi
 echo ""
 
