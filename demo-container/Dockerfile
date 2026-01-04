@@ -9,10 +9,6 @@ USER root
 RUN pip3 install --no-cache-dir --break-system-packages \
     jira-assistant-skills-lib>=0.1.5
 
-# Clone JIRA Assistant Skills plugin (installed at container start)
-RUN git clone --depth 1 https://github.com/grandcamel/jira-assistant-skills.git /opt/jira-assistant-skills && \
-    chown -R devuser:node /opt/jira-assistant-skills
-
 # Copy MOTD (welcome message)
 COPY motd /etc/motd
 RUN chmod 644 /etc/motd
