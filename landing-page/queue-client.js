@@ -42,8 +42,10 @@ class QueueClient {
     }
 
     getInviteToken() {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('invite') || null;
+        // Token is in the URL path: /TOKEN
+        const path = window.location.pathname;
+        const match = path.match(/^\/([A-Za-z0-9_-]{16})$/);
+        return match ? match[1] : null;
     }
 
     showInviteRequired() {

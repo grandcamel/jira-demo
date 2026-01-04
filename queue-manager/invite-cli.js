@@ -88,7 +88,7 @@ async function generate(options) {
 
   await redis.set(`invite:${token}`, JSON.stringify(invite), 'EX', ttlSeconds);
 
-  const inviteUrl = `${BASE_URL}/?invite=${token}`;
+  const inviteUrl = `${BASE_URL}/${token}`;
 
   console.log('\nInvite created successfully!\n');
   console.log(`Token:   ${token}`);
