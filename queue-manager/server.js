@@ -128,6 +128,9 @@ const clients = new Map(); // ws -> { id, state, joinedAt, ip, userAgent, invite
 const queue = [];          // Array of client IDs waiting
 let activeSession = null;  // { clientId, sessionId, startedAt, expiresAt, ttydProcess, inviteToken, ip, userAgent, queueWaitMs, errors, sessionToken }
 const sessionTokens = new Map(); // sessionToken -> sessionId (for Grafana auth)
+const pendingSessionTokens = new Map(); // sessionToken -> { clientId, inviteToken, ip } (for queue/pending state)
+let disconnectGraceTimeout = null; // Timeout for disconnect grace period
+const DISCONNECT_GRACE_MS = 10000; // 10 seconds grace period for page refresh
 
 // Invite audit retention (30 days after expiration)
 const AUDIT_RETENTION_DAYS = 30;
@@ -146,28 +149,32 @@ app.get('/api/health', (req, res) => {
 
 // Session validation endpoint (used by nginx auth_request for Grafana)
 app.get('/api/session/validate', (req, res) => {
-  const sessionCookie = req.cookies.grafana_session;
+  const sessionCookie = req.cookies.demo_session;
 
   if (!sessionCookie) {
     return res.status(401).send('No session cookie');
   }
 
-  // Validate session token
+  // Check active session token first
   const sessionId = sessionTokens.get(sessionCookie);
-  if (!sessionId) {
-    return res.status(401).send('Invalid session token');
+  if (sessionId && activeSession && activeSession.sessionId === sessionId) {
+    res.set('X-Grafana-User', `demo-${sessionId.slice(0, 8)}`);
+    return res.status(200).send('OK');
   }
 
-  // Check if session is still active
-  if (!activeSession || activeSession.sessionId !== sessionId) {
-    // Clean up stale token
+  // Check pending session token (user in queue or session starting)
+  const pending = pendingSessionTokens.get(sessionCookie);
+  if (pending) {
+    res.set('X-Grafana-User', `demo-${pending.clientId.slice(0, 8)}`);
+    return res.status(200).send('OK');
+  }
+
+  // Clean up stale token if it was in sessionTokens
+  if (sessionTokens.has(sessionCookie)) {
     sessionTokens.delete(sessionCookie);
-    return res.status(401).send('Session not active');
   }
 
-  // Set header for Grafana user identification
-  res.set('X-Grafana-User', `demo-${sessionId.slice(0, 8)}`);
-  res.status(200).send('OK');
+  return res.status(401).send('Session not active');
 });
 
 // Queue status (public)
@@ -184,12 +191,13 @@ app.get('/api/status', (req, res) => {
 app.get('/api/invite/validate', async (req, res) => {
   // Token comes from X-Invite-Token header (set by nginx from path) or query param
   const token = req.headers['x-invite-token'] || req.query.token;
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
 
   if (!token) {
     return res.status(401).json({ valid: false, reason: 'missing', message: 'Invite token required' });
   }
 
-  const validation = await validateInvite(token);
+  const validation = await validateInvite(token, clientIp);
 
   if (validation.valid) {
     res.status(200).json({ valid: true });
@@ -494,6 +502,11 @@ function handleDisconnect(ws) {
 
   console.log(`Client disconnected: ${client.id}`);
 
+  // Clean up pending session token (but keep it for grace period if in active session)
+  if (client.pendingSessionToken && !(activeSession && activeSession.clientId === client.id)) {
+    pendingSessionTokens.delete(client.pendingSessionToken);
+  }
+
   // Remove from queue if waiting
   const queueIndex = queue.indexOf(client.id);
   if (queueIndex !== -1) {
@@ -501,9 +514,27 @@ function handleDisconnect(ws) {
     broadcastQueueUpdate();
   }
 
-  // End session if active
+  // End session with grace period if active (allows page refresh)
   if (activeSession && activeSession.clientId === client.id) {
-    endSession('disconnected');
+    console.log(`Starting ${DISCONNECT_GRACE_MS/1000}s grace period for session ${activeSession.sessionId}`);
+
+    // Store info needed for reconnection
+    activeSession.disconnectedAt = new Date();
+    activeSession.awaitingReconnect = true;
+
+    // Clear any existing grace timeout
+    if (disconnectGraceTimeout) {
+      clearTimeout(disconnectGraceTimeout);
+    }
+
+    // Set grace period - session ends if no reconnect within timeout
+    disconnectGraceTimeout = setTimeout(() => {
+      if (activeSession && activeSession.awaitingReconnect) {
+        console.log('Grace period expired, ending session');
+        endSession('disconnected');
+      }
+      disconnectGraceTimeout = null;
+    }, DISCONNECT_GRACE_MS);
   }
 
   clients.delete(ws);
@@ -514,6 +545,44 @@ function handleDisconnect(ws) {
 // =============================================================================
 
 async function joinQueue(ws, client, inviteToken) {
+  // Check if this is a reconnection to an active session (grace period)
+  if (activeSession && activeSession.awaitingReconnect &&
+      activeSession.inviteToken === inviteToken && activeSession.ip === client.ip) {
+    console.log(`Client ${client.id} reconnecting to session ${activeSession.sessionId} during grace period`);
+
+    // Cancel the grace period timeout
+    if (disconnectGraceTimeout) {
+      clearTimeout(disconnectGraceTimeout);
+      disconnectGraceTimeout = null;
+    }
+
+    // Update session with new client
+    activeSession.clientId = client.id;
+    activeSession.awaitingReconnect = false;
+    delete activeSession.disconnectedAt;
+
+    // Give client the existing session token
+    client.inviteToken = inviteToken;
+    client.state = 'active';
+    client.pendingSessionToken = activeSession.sessionToken;
+
+    // Send session info to client
+    ws.send(JSON.stringify({
+      type: 'session_token',
+      session_token: activeSession.sessionToken
+    }));
+    ws.send(JSON.stringify({
+      type: 'session_starting',
+      terminal_url: '/terminal',
+      expires_at: activeSession.expiresAt.toISOString(),
+      session_token: activeSession.sessionToken,
+      reconnected: true
+    }));
+
+    console.log(`Session ${activeSession.sessionId} reconnected successfully`);
+    return;
+  }
+
   // Check if already in queue
   if (queue.includes(client.id)) {
     sendError(ws, 'Already in queue');
@@ -522,7 +591,7 @@ async function joinQueue(ws, client, inviteToken) {
 
   // Validate invite token if provided
   if (inviteToken) {
-    const validation = await validateInvite(inviteToken);
+    const validation = await validateInvite(inviteToken, client.ip);
     if (!validation.valid) {
       ws.send(JSON.stringify({
         type: 'invite_invalid',
@@ -544,6 +613,22 @@ async function joinQueue(ws, client, inviteToken) {
     }));
     return;
   }
+
+  // Generate pending session token immediately (allows page refresh while in queue)
+  const pendingToken = generateSessionToken(client.id);
+  pendingSessionTokens.set(pendingToken, {
+    clientId: client.id,
+    inviteToken: inviteToken || null,
+    ip: client.ip,
+    createdAt: new Date()
+  });
+  client.pendingSessionToken = pendingToken;
+
+  // Send token immediately so client can set cookie
+  ws.send(JSON.stringify({
+    type: 'session_token',
+    session_token: pendingToken
+  }));
 
   // Add to queue
   queue.push(client.id);
@@ -599,7 +684,7 @@ function clearSessionToken(sessionToken) {
 // Invite Validation
 // =============================================================================
 
-async function validateInvite(token) {
+async function validateInvite(token, clientIp = null) {
   const tracer = getTracer();
   const span = tracer?.startSpan('invite.validate', {
     attributes: { 'invite.token_prefix': token?.slice(0, 8) || 'none' }
@@ -645,6 +730,25 @@ async function validateInvite(token) {
 
     // Check if already used
     if (invite.status === 'used' || (invite.useCount >= invite.maxUses)) {
+      // Allow rejoin if there's an active session from the same IP using this invite
+      // (includes sessions in grace period awaiting reconnect)
+      if (clientIp && activeSession && activeSession.inviteToken === token && activeSession.ip === clientIp) {
+        console.log(`Allowing rejoin for used invite ${token.slice(0, 8)}... from same IP ${clientIp} (awaitingReconnect: ${activeSession.awaitingReconnect || false})`);
+        invitesValidatedCounter?.add(1, { status: 'rejoin' });
+        span?.setAttribute('invite.status', 'rejoin');
+        return { valid: true, data: invite, rejoin: true };
+      }
+
+      // Also allow if there's a pending session token from the same IP
+      for (const [, pending] of pendingSessionTokens) {
+        if (pending.inviteToken === token && pending.ip === clientIp) {
+          console.log(`Allowing rejoin for pending invite ${token.slice(0, 8)}... from same IP ${clientIp}`);
+          invitesValidatedCounter?.add(1, { status: 'rejoin' });
+          span?.setAttribute('invite.status', 'rejoin');
+          return { valid: true, data: invite, rejoin: true };
+        }
+      }
+
       invitesValidatedCounter?.add(1, { status: 'used' });
       span?.setAttribute('invite.status', 'used');
       return {
@@ -770,8 +874,14 @@ async function startSession(ws, client) {
       span?.setAttribute('session.queue_wait_seconds', queueWaitMs / 1000);
     }
 
-    // Generate session token for Grafana auth
-    const sessionToken = setSessionCookie(ws, sessionId);
+    // Promote pending session token to active session token
+    // (client already has the cookie from queue join)
+    const sessionToken = client.pendingSessionToken;
+    if (sessionToken) {
+      // Remove from pending and add to active session tokens
+      pendingSessionTokens.delete(sessionToken);
+      sessionTokens.set(sessionToken, sessionId);
+    }
 
     activeSession = {
       clientId: client.id,
@@ -795,12 +905,13 @@ async function startSession(ws, client) {
       }
     });
 
-    // Notify client with session token for cookie
+    // Notify client - session token was already sent on queue join,
+    // but include again for redundancy
     ws.send(JSON.stringify({
       type: 'session_starting',
       terminal_url: '/terminal',
       expires_at: expiresAt.toISOString(),
-      session_token: sessionToken  // Client should set this as grafana_session cookie
+      session_token: sessionToken
     }));
 
     // Schedule warning and timeout
@@ -905,7 +1016,7 @@ async function endSession(reason) {
     clientWs.send(JSON.stringify({
       type: 'session_ended',
       reason: reason,
-      clear_session_cookie: true  // Client should clear grafana_session cookie
+      clear_session_cookie: true  // Client should clear demo_session cookie
     }));
 
     const client = clients.get(clientWs);
@@ -1063,6 +1174,11 @@ server.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('Shutting down...');
+
+  // Clear grace period timeout
+  if (disconnectGraceTimeout) {
+    clearTimeout(disconnectGraceTimeout);
+  }
 
   if (activeSession) {
     await endSession('shutdown');

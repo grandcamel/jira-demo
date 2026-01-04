@@ -152,6 +152,13 @@ class QueueClient {
                 this.handleInviteInvalid(message);
                 break;
 
+            case 'session_token':
+                // Set session cookie immediately on queue join (allows page refresh)
+                if (message.session_token) {
+                    document.cookie = `demo_session=${message.session_token}; path=/; SameSite=Lax`;
+                }
+                break;
+
             case 'heartbeat_ack':
                 // Ignore heartbeat acknowledgments
                 break;
@@ -184,6 +191,8 @@ class QueueClient {
 
     handleLeftQueue() {
         this.state = 'connected';
+        // Clear session cookie since we're leaving the queue
+        document.cookie = 'demo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         this.updateUI();
     }
 
@@ -193,7 +202,7 @@ class QueueClient {
 
         // Set session cookie for Grafana access
         if (message.session_token) {
-            document.cookie = `grafana_session=${message.session_token}; path=/; SameSite=Lax`;
+            document.cookie = `demo_session=${message.session_token}; path=/; SameSite=Lax`;
         }
 
         // Show terminal overlay
@@ -216,7 +225,7 @@ class QueueClient {
         this.sessionExpiresAt = null;
 
         // Clear session cookie
-        document.cookie = 'grafana_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'demo_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 
         // Hide terminal overlay
         this.terminalOverlay.hidden = true;
