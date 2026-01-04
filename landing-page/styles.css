@@ -221,6 +221,55 @@ nav a:hover {
     background: rgba(239, 68, 68, 0.1);
 }
 
+/* Invite Error Section */
+.invite-error {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+}
+
+.invite-error[hidden] {
+    display: none !important;
+}
+
+.invite-error .error-icon {
+    font-size: 4rem;
+    color: var(--error);
+    margin-bottom: 1.5rem;
+}
+
+.invite-error h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--error);
+}
+
+.invite-error p {
+    color: var(--muted-gray);
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin-bottom: 2rem;
+}
+
+.try-again-btn {
+    display: inline-block;
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--atlassian-blue);
+    padding: 0.75rem 2rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.try-again-btn:hover {
+    background: rgba(0, 82, 204, 0.2);
+}
+
 /* Scenarios Section */
 .scenarios {
     max-width: 1200px;

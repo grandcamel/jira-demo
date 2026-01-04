@@ -3,14 +3,16 @@
  *
  * Handles WebSocket communication with the queue manager
  * and manages UI state transitions.
+ * Supports invite-based access control.
  */
 
 class QueueClient {
     constructor() {
         this.ws = null;
-        this.state = 'disconnected'; // disconnected, connected, queued, active
+        this.state = 'disconnected'; // disconnected, connected, queued, active, error
         this.sessionExpiresAt = null;
         this.timerInterval = null;
+        this.inviteToken = this.getInviteToken();
 
         // UI Elements
         this.statusIndicator = document.getElementById('status-indicator');
@@ -24,9 +26,18 @@ class QueueClient {
         this.terminalIframe = document.getElementById('terminal-iframe');
         this.terminalTimer = document.getElementById('terminal-timer');
         this.terminalClose = document.getElementById('terminal-close');
+        this.inviteError = document.getElementById('invite-error');
+        this.errorTitle = document.getElementById('error-title');
+        this.errorMessage = document.getElementById('error-message');
+        this.heroSection = document.querySelector('.hero');
 
         this.bindEvents();
         this.connect();
+    }
+
+    getInviteToken() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('invite') || null;
     }
 
     bindEvents() {
@@ -113,6 +124,10 @@ class QueueClient {
                 this.handleError(message);
                 break;
 
+            case 'invite_invalid':
+                this.handleInviteInvalid(message);
+                break;
+
             case 'heartbeat_ack':
                 // Ignore heartbeat acknowledgments
                 break;
@@ -196,13 +211,45 @@ class QueueClient {
         alert(`Error: ${message.message}`);
     }
 
+    handleInviteInvalid(message) {
+        console.error('Invite invalid:', message.reason, message.message);
+        this.state = 'error';
+
+        // Error titles based on reason
+        const titles = {
+            'not_found': 'Invite Not Found',
+            'expired': 'Invite Expired',
+            'used': 'Invite Already Used',
+            'revoked': 'Invite Revoked',
+            'invalid': 'Invalid Invite'
+        };
+
+        this.errorTitle.textContent = titles[message.reason] || 'Invalid Invite';
+        this.errorMessage.textContent = message.message || 'This invite link is not valid.';
+
+        // Hide hero section and show error
+        if (this.heroSection) {
+            this.heroSection.hidden = true;
+        }
+        if (this.inviteError) {
+            this.inviteError.hidden = false;
+        }
+
+        this.startBtn.classList.remove('loading');
+    }
+
     handleStartDemo() {
         if (this.ws.readyState !== WebSocket.OPEN) {
             alert('Not connected. Please wait...');
             return;
         }
 
-        this.ws.send(JSON.stringify({ type: 'join_queue' }));
+        const message = { type: 'join_queue' };
+        if (this.inviteToken) {
+            message.inviteToken = this.inviteToken;
+        }
+
+        this.ws.send(JSON.stringify(message));
         this.startBtn.classList.add('loading');
     }
 

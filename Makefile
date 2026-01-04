@@ -57,6 +57,19 @@ seed-sandbox:
 	@echo "Seeding JIRA sandbox..."
 	docker-compose exec queue-manager python /opt/scripts/seed_demo_data.py
 
+# Invite Management
+invite:
+	@docker-compose exec -T queue-manager node /app/invite-cli.js generate --expires $(or $(EXPIRES),48h) $(if $(LABEL),--label "$(LABEL)",)
+
+invite-list:
+	@docker-compose exec -T queue-manager node /app/invite-cli.js list $(if $(STATUS),--status $(STATUS),)
+
+invite-info:
+	@docker-compose exec -T queue-manager node /app/invite-cli.js info $(TOKEN)
+
+invite-revoke:
+	@docker-compose exec -T queue-manager node /app/invite-cli.js revoke $(TOKEN)
+
 # SSL
 ssl-setup:
 	@echo "Setting up SSL with Let's Encrypt..."
@@ -81,7 +94,8 @@ shell-demo:
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
-		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		jira-demo-container:latest
 
 # Testing
@@ -112,6 +126,14 @@ help:
 	@echo "JIRA Sandbox:"
 	@echo "  make reset-sandbox  - Reset JIRA sandbox to initial state"
 	@echo "  make seed-sandbox   - Seed JIRA sandbox with demo data"
+	@echo ""
+	@echo "Invite Management:"
+	@echo "  make invite EXPIRES=7d       - Generate invite URL (default: 48h)"
+	@echo "  make invite EXPIRES=24h LABEL='Workshop' - Generate with label"
+	@echo "  make invite-list             - List all invites"
+	@echo "  make invite-list STATUS=pending - List by status"
+	@echo "  make invite-info TOKEN=xxx   - Show invite details"
+	@echo "  make invite-revoke TOKEN=xxx - Revoke an invite"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          - Remove all containers and volumes"

@@ -2,10 +2,11 @@
  * JIRA Demo Queue Manager
  *
  * Manages single-user demo sessions with queue/waitlist functionality.
+ * Supports invite-based access control with detailed session tracking.
  *
  * WebSocket Protocol:
  *   Client -> Server:
- *     { type: "join_queue" }
+ *     { type: "join_queue", inviteToken?: "token" }
  *     { type: "leave_queue" }
  *     { type: "heartbeat" }
  *
@@ -15,6 +16,7 @@
  *     { type: "session_active", expires_at: "ISO timestamp" }
  *     { type: "session_warning", minutes_remaining: 5 }
  *     { type: "session_ended", reason: "timeout" | "disconnected" | "error" }
+ *     { type: "invite_invalid", reason: "not_found" | "expired" | "used" | "revoked", message: "..." }
  *     { type: "error", message: "..." }
  */
 
@@ -33,6 +35,8 @@ const SESSION_TIMEOUT_MINUTES = parseInt(process.env.SESSION_TIMEOUT_MINUTES) ||
 const MAX_QUEUE_SIZE = parseInt(process.env.MAX_QUEUE_SIZE) || 10;
 const AVERAGE_SESSION_MINUTES = 45;
 const TTYD_PORT = 7681;
+const CLAUDE_CREDENTIALS_PATH = process.env.CLAUDE_CREDENTIALS_PATH || '/opt/jira-demo/secrets/.credentials.json';
+const CLAUDE_CONFIG_PATH = process.env.CLAUDE_CONFIG_PATH || '/opt/jira-demo/secrets/.claude.json';
 
 // Initialize services
 const app = express();
@@ -42,9 +46,12 @@ const redis = new Redis(REDIS_URL);
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 // State
-const clients = new Map(); // ws -> { id, state, joinedAt }
+const clients = new Map(); // ws -> { id, state, joinedAt, ip, userAgent, inviteToken }
 const queue = [];          // Array of client IDs waiting
-let activeSession = null;  // { clientId, containerId, startedAt, expiresAt, ttydProcess }
+let activeSession = null;  // { clientId, sessionId, startedAt, expiresAt, ttydProcess, inviteToken, ip, userAgent, queueWaitMs, errors }
+
+// Invite audit retention (30 days after expiration)
+const AUDIT_RETENTION_DAYS = 30;
 
 // =============================================================================
 // Express Routes
@@ -71,11 +78,21 @@ app.get('/api/status', (req, res) => {
 // WebSocket Handlers
 // =============================================================================
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   const clientId = uuidv4();
-  clients.set(ws, { id: clientId, state: 'connected', joinedAt: null });
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'] || 'unknown';
 
-  console.log(`Client connected: ${clientId}`);
+  clients.set(ws, {
+    id: clientId,
+    state: 'connected',
+    joinedAt: null,
+    ip: clientIp,
+    userAgent: userAgent,
+    inviteToken: null
+  });
+
+  console.log(`Client connected: ${clientId} from ${clientIp}`);
 
   ws.on('message', (data) => {
     try {
@@ -104,7 +121,7 @@ function handleMessage(ws, message) {
 
   switch (message.type) {
     case 'join_queue':
-      joinQueue(ws, client);
+      joinQueue(ws, client, message.inviteToken);
       break;
 
     case 'leave_queue':
@@ -145,11 +162,27 @@ function handleDisconnect(ws) {
 // Queue Management
 // =============================================================================
 
-function joinQueue(ws, client) {
+async function joinQueue(ws, client, inviteToken) {
   // Check if already in queue
   if (queue.includes(client.id)) {
     sendError(ws, 'Already in queue');
     return;
+  }
+
+  // Validate invite token if provided
+  if (inviteToken) {
+    const validation = await validateInvite(inviteToken);
+    if (!validation.valid) {
+      ws.send(JSON.stringify({
+        type: 'invite_invalid',
+        reason: validation.reason,
+        message: validation.message
+      }));
+      return;
+    }
+    client.inviteToken = inviteToken;
+    client.inviteData = validation.data;
+    console.log(`Client ${client.id} has valid invite: ${inviteToken.slice(0, 8)}...`);
   }
 
   // Check queue size limit
@@ -176,6 +209,66 @@ function joinQueue(ws, client) {
   }
 
   broadcastQueueUpdate();
+}
+
+// =============================================================================
+// Invite Validation
+// =============================================================================
+
+async function validateInvite(token) {
+  if (!token || token.length < 10) {
+    return {
+      valid: false,
+      reason: 'invalid',
+      message: 'This invite link is malformed or invalid.'
+    };
+  }
+
+  const inviteKey = `invite:${token}`;
+  const inviteJson = await redis.get(inviteKey);
+
+  if (!inviteJson) {
+    return {
+      valid: false,
+      reason: 'not_found',
+      message: 'This invite link does not exist. Please check the URL or request a new invite.'
+    };
+  }
+
+  const invite = JSON.parse(inviteJson);
+
+  // Check if revoked
+  if (invite.status === 'revoked') {
+    return {
+      valid: false,
+      reason: 'revoked',
+      message: 'This invite link has been revoked by an administrator.'
+    };
+  }
+
+  // Check if already used
+  if (invite.status === 'used' || (invite.useCount >= invite.maxUses)) {
+    return {
+      valid: false,
+      reason: 'used',
+      message: 'This invite link has already been used. Each invite can only be used once.'
+    };
+  }
+
+  // Check expiration
+  if (new Date(invite.expiresAt) < new Date()) {
+    // Update status in Redis
+    invite.status = 'expired';
+    const ttl = await redis.ttl(inviteKey);
+    await redis.set(inviteKey, JSON.stringify(invite), 'EX', ttl > 0 ? ttl : 86400);
+    return {
+      valid: false,
+      reason: 'expired',
+      message: 'This invite link has expired. Please request a new invite.'
+    };
+  }
+
+  return { valid: true, data: invite };
 }
 
 function leaveQueue(ws, client) {
@@ -239,7 +332,8 @@ async function startSession(ws, client) {
       '-e', `JIRA_EMAIL=${process.env.JIRA_EMAIL}`,
       '-e', `JIRA_SITE_URL=${process.env.JIRA_SITE_URL}`,
       '-e', `SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES}`,
-      '-v', '/opt/jira-demo/secrets/.claude.json:/home/devuser/.claude/.credentials.json:ro',
+      '-v', `${CLAUDE_CREDENTIALS_PATH}:/home/devuser/.claude/.credentials.json:ro`,
+      '-v', `${CLAUDE_CONFIG_PATH}:/home/devuser/.claude/.claude.json:ro`,
       'jira-demo-container:latest'
     ], {
       stdio: ['pipe', 'pipe', 'pipe']
@@ -247,12 +341,19 @@ async function startSession(ws, client) {
 
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000);
+    const queueWaitMs = client.joinedAt ? (startedAt - client.joinedAt) : 0;
 
     activeSession = {
       clientId: client.id,
+      sessionId: uuidv4(),
       ttydProcess: ttydProcess,
       startedAt: startedAt,
-      expiresAt: expiresAt
+      expiresAt: expiresAt,
+      inviteToken: client.inviteToken || null,
+      ip: client.ip,
+      userAgent: client.userAgent,
+      queueWaitMs: queueWaitMs,
+      errors: []
     };
 
     // Handle ttyd exit
@@ -276,8 +377,13 @@ async function startSession(ws, client) {
 
     // Save to Redis for persistence
     await redis.set(`session:${client.id}`, JSON.stringify({
+      sessionId: activeSession.sessionId,
       startedAt: startedAt.toISOString(),
-      expiresAt: expiresAt.toISOString()
+      expiresAt: expiresAt.toISOString(),
+      inviteToken: client.inviteToken || null,
+      ip: client.ip,
+      userAgent: client.userAgent,
+      queueWaitMs: queueWaitMs
     }), 'EX', SESSION_TIMEOUT_MINUTES * 60);
 
     console.log(`Session started for ${client.id}, expires at ${expiresAt.toISOString()}`);
@@ -319,6 +425,7 @@ async function endSession(reason) {
   if (!activeSession) return;
 
   const clientId = activeSession.clientId;
+  const endedAt = new Date();
   console.log(`Ending session for ${clientId}, reason: ${reason}`);
 
   // Kill ttyd process
@@ -328,6 +435,11 @@ async function endSession(reason) {
     } catch (err) {
       console.error('Error killing ttyd:', err.message);
     }
+  }
+
+  // Record invite usage if applicable
+  if (activeSession.inviteToken) {
+    await recordInviteUsage(activeSession, endedAt, reason);
   }
 
   // Notify client
@@ -354,6 +466,54 @@ async function endSession(reason) {
 
   // Process next in queue
   processQueue();
+}
+
+async function recordInviteUsage(session, endedAt, endReason) {
+  const inviteKey = `invite:${session.inviteToken}`;
+
+  try {
+    const inviteJson = await redis.get(inviteKey);
+    if (!inviteJson) {
+      console.log(`Invite ${session.inviteToken} not found for usage recording`);
+      return;
+    }
+
+    const invite = JSON.parse(inviteJson);
+
+    // Add session record
+    if (!invite.sessions) invite.sessions = [];
+    invite.sessions.push({
+      sessionId: session.sessionId,
+      clientId: session.clientId,
+      startedAt: session.startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      endReason: endReason,
+      queueWaitMs: session.queueWaitMs,
+      ip: session.ip,
+      userAgent: session.userAgent,
+      errors: session.errors || []
+    });
+
+    // Update usage tracking
+    invite.useCount = (invite.useCount || 0) + 1;
+    if (invite.useCount >= invite.maxUses) {
+      invite.status = 'used';
+    }
+
+    // Save with extended TTL (audit retention after expiration)
+    const expiresAtMs = new Date(invite.expiresAt).getTime();
+    const auditRetentionMs = AUDIT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    const ttlSeconds = Math.max(
+      Math.floor((expiresAtMs - Date.now() + auditRetentionMs) / 1000),
+      86400  // At least 1 day
+    );
+
+    await redis.set(inviteKey, JSON.stringify(invite), 'EX', ttlSeconds);
+    console.log(`Recorded usage for invite ${session.inviteToken.slice(0, 8)}..., status: ${invite.status}`);
+
+  } catch (err) {
+    console.error('Error recording invite usage:', err.message);
+  }
 }
 
 function runSandboxCleanup() {
