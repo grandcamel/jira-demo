@@ -22,6 +22,17 @@ SESSION_TIMEOUT_SECONDS=$((SESSION_TIMEOUT_MINUTES * 60))
 clear
 cat /etc/motd
 
+# Install JIRA Assistant Skills plugin (if not already installed)
+echo -e "${CYAN}Setting up plugins...${NC}"
+if ! claude plugin list 2>/dev/null | grep -q "jira-assistant-skills"; then
+    claude plugin marketplace add /opt/jira-assistant-skills >/dev/null 2>&1
+    claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1
+    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills installed"
+else
+    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills ready"
+fi
+echo ""
+
 # Verify Claude credentials
 echo -e "${CYAN}Checking connections...${NC}"
 

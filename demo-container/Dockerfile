@@ -9,18 +9,9 @@ USER root
 RUN pip3 install --no-cache-dir --break-system-packages \
     jira-assistant-skills-lib>=0.1.5
 
-# Clone JIRA Assistant Skills plugin
+# Clone JIRA Assistant Skills plugin (installed at container start)
 RUN git clone --depth 1 https://github.com/grandcamel/jira-assistant-skills.git /opt/jira-assistant-skills && \
     chown -R devuser:node /opt/jira-assistant-skills
-
-# Switch to devuser to install plugin properly
-USER devuser
-
-# Install the plugin via Claude CLI marketplace system
-RUN claude plugin marketplace add /opt/jira-assistant-skills && \
-    claude plugin install jira-assistant-skills@jira-assistant-skills --scope user
-
-USER root
 
 # Copy MOTD (welcome message)
 COPY motd /etc/motd
