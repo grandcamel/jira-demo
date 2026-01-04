@@ -22,16 +22,6 @@ SESSION_TIMEOUT_SECONDS=$((SESSION_TIMEOUT_MINUTES * 60))
 clear
 cat /etc/motd
 
-# Install JIRA Assistant Skills plugin from marketplace
-echo -e "${CYAN}Setting up plugins...${NC}"
-if claude plugin marketplace add grandcamel/jira-assistant-skills >/dev/null 2>&1 || \
-   claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1; then
-    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills ready"
-else
-    echo -e "  ${YELLOW}⚠${NC} Plugin installation failed (will retry on first use)"
-fi
-echo ""
-
 # Verify Claude credentials
 echo -e "${CYAN}Checking connections...${NC}"
 
@@ -99,6 +89,16 @@ cleanup() {
     jobs -p | xargs -r kill 2>/dev/null
 }
 trap cleanup EXIT
+
+# Install JIRA Assistant Skills plugin from marketplace
+echo -e "${CYAN}Setting up plugins...${NC}"
+claude plugin marketplace add grandcamel/jira-assistant-skills >/dev/null 2>&1 || true
+if claude plugin install jira-assistant-skills@jira-assistant-skills --scope user >/dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} JIRA Assistant Skills ready"
+else
+    echo -e "  ${YELLOW}⚠${NC} Plugin installation failed (will retry on first use)"
+fi
+echo ""
 
 echo -e "${GREEN}Ready! Type 'claude' followed by your request, or try the examples above.${NC}"
 echo ""
