@@ -80,7 +80,7 @@ services:
     image: grafana/otel-lgtm:latest
     container_name: jira-demo-lgtm
     environment:
-      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana/
+      - GF_SERVER_ROOT_URL=http://localhost:8080/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_AUTH_ANONYMOUS_ENABLED=false
       - GF_AUTH_PROXY_ENABLED=true
@@ -88,12 +88,11 @@ services:
       - GF_AUTH_PROXY_HEADER_PROPERTY=username
       - GF_AUTH_PROXY_AUTO_SIGN_UP=true
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_PLUGINS_ENABLE_ALPHA=false
+      - GF_PLUGINS_DISABLE_PLUGINS=grafana-exploretraces-app,grafana-metricsdrilldown-app,grafana-pyroscope-app
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/demo-home.json
     volumes:
-      - ./observability/otelcol-config.yaml:/otel-lgtm/otelcol-config.yaml:ro
-      - ./observability/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
-      - ./observability/loki-config.yaml:/otel-lgtm/loki-config.yaml:ro
-      - ./observability/tempo-config.yaml:/otel-lgtm/tempo-config.yaml:ro
-      - ./observability/grafana-datasources.yaml:/otel-lgtm/grafana-datasources.yaml:ro
+      # Use built-in configs - custom configs can cause conflicts
       - ./observability/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
       - ./observability/dashboards:/var/lib/grafana/dashboards:ro
       - lgtm-data:/data
