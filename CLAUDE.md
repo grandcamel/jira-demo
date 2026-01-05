@@ -205,6 +205,15 @@ doctl compute domain records list assistant-skills.dev
 
 ## Git Workflow
 
+**Branch policy:** Never push directly to `main`. Always create a PR branch.
+
+```bash
+git checkout -b feature/my-change
+# make changes and commit
+git push -u origin feature/my-change
+# create PR via GitHub
+```
+
 **Merge strategy:** Rebase only (linear history enforced)
 
 - Merge commits: disabled
