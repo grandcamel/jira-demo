@@ -64,13 +64,14 @@ nginx (reverse proxy) --> queue-manager (Node.js) --> ttyd --> demo-container
 - **queue-manager/** - Node.js Express + WebSocket server managing single-user demo sessions. Spawns ttyd processes that run demo containers. Uses Redis for queue persistence.
 
 - **demo-container/** - Docker image based on `grandcamel/claude-devcontainer:enhanced`. Pre-installs JIRA Assistant Skills plugin and guided scenario docs in `/workspace/scenarios/`. Presents an interactive startup menu:
-  1. **View Scenarios** - Browse guided walkthroughs (issue, search, agile, JSM)
+  1. **View Scenarios** - Browse guided walkthroughs (issue, search, agile, JSM, observability)
   2. **Start Claude** - Launches `claude --dangerously-skip-permissions` for hands-free demo
   3. **Start Bash Shell** - Drop to shell for manual exploration
+  4. **Auto-play Scenario** - (experimental, hidden by default) Watch automated demo
 
 - **scripts/** - Python scripts using `jira-assistant-skills-lib`:
   - `cleanup_demo_sandbox.py` - Deletes user-created issues (key > 10), resets seed issues to initial state
-  - `seed_demo_data.py` - Seeds JIRA sandbox with demo issues
+  - `seed_demo_data.py` - Seeds JIRA sandbox with demo issues (assigns some to Jane Manager)
 
 ## Invite System
 
@@ -132,6 +133,15 @@ Projects: DEMO (Scrum), DEMOSD (JSM Service Desk)
 
 Seed issues DEMO-1 through DEMO-10 are preserved during cleanup. Issues with higher keys are deleted between sessions.
 
+**JIRA Accounts:**
+- **Jason Krueger** (jasonkrue@gmail.com) - Claude's API access account
+- **Jane Manager** - Test user for viewing JIRA web UI from another perspective
+
+**Jane Manager's issues:**
+- DEMO-3 (Login bug) - assigned to Jane
+- DEMO-4 (API documentation) - assigned to Jane
+- DEMO-8 (Search pagination bug) - reported by Jane
+
 ## Observability
 
 Integrated LGTM (Loki, Grafana, Tempo, Mimir/Prometheus) stack for full observability:
@@ -163,3 +173,15 @@ redis --> redis-exporter --> Prometheus
 - `jira_demo_invites_validated_total` - Invite validation by status
 
 **Config files:** `observability/` directory contains all LGTM configuration.
+
+## Experimental Features
+
+**Auto-play scenarios** (disabled by default):
+
+Automated scenario playback using expect to drive Claude through predefined prompts.
+
+- Enable: Set `ENABLE_AUTOPLAY=true` in `docker-compose.dev.yml` queue-manager environment
+- Prompts: `demo-container/scenarios/*.prompts`
+- Script: `demo-container/autoplay.sh`
+
+Status: Buggy - prompt submission timing issues with Claude Code's TUI.
