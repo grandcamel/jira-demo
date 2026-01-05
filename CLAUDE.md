@@ -181,6 +181,39 @@ redis --> redis-exporter --> Prometheus
 
 SSH access: `ssh root@assistant-skills.dev`
 
+**Deploy workflow:**
+```bash
+ssh root@assistant-skills.dev "cd /opt/jira-demo && git pull origin main && \
+  docker-compose build queue-manager && \
+  docker build -t jira-demo-container:latest ./demo-container && \
+  docker-compose down && docker-compose up -d"
+```
+
+**Secrets file permissions:** Files in `secrets/` must be readable by container user:
+```bash
+chmod 644 secrets/.credentials.json secrets/.claude.json
+```
+
+**DNS management:** Use `doctl` CLI for DigitalOcean DNS:
+```bash
+doctl compute domain records list assistant-skills.dev
+```
+
+**SSL certificates:** Managed by Let's Encrypt (certbot), auto-renews via cron.
+
+**Email forwarding:** ImprovMX configured for `*@assistant-skills.dev` → forwards to admin email. Used for creating demo Atlassian accounts.
+
+## Git Workflow
+
+**Merge strategy:** Rebase only (linear history enforced)
+
+- Merge commits: disabled
+- Squash merge: disabled
+- Rebase merge: enabled
+- Auto-delete branches after merge: enabled
+
+Keep commits atomic and well-described. PRs will be rebased onto `main`.
+
 ## Slash Commands
 
 Available slash commands in `.claude/commands/`:
