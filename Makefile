@@ -1,4 +1,6 @@
-.PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token
+.PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
+	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
+	logs-errors-local traces-errors-local
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -145,6 +147,43 @@ test-landing:
 
 test-terminal:
 	@open http://localhost:7681
+
+# =============================================================================
+# Local Development Operations (for slash commands)
+# =============================================================================
+
+status-local:
+	@echo "=== Local Dev Status ==="
+	@printf "Health: "; curl -sf http://localhost:8080/health > /dev/null && echo "OK" || echo "FAILED"
+	@printf "Queue: "; curl -s http://localhost:8080/api/status | jq -c 2>/dev/null || echo "unavailable"
+	@echo "Containers:"; docker-compose ps --format 'table {{.Name}}\t{{.Status}}' 2>/dev/null || echo "not running"
+
+health-local:
+	@printf "Health: "; curl -sf http://localhost:8080/health > /dev/null && echo "OK" || echo "FAILED"
+	@printf "Queue API: "; curl -sf http://localhost:8080/api/status > /dev/null && echo "OK" || echo "FAILED"
+	@printf "Redis: "; docker-compose exec -T redis redis-cli ping > /dev/null 2>&1 && echo "OK" || echo "FAILED"
+
+start-local:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+stop-local:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+
+restart-local:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml restart
+
+queue-status-local:
+	@curl -s http://localhost:8080/api/status | jq
+
+queue-reset-local:
+	@echo "Resetting local queue..."
+	docker-compose restart queue-manager
+
+logs-errors-local:
+	@docker-compose logs --tail=100 2>&1 | grep -iE 'error|failed|exception' || echo "No errors found"
+
+traces-errors-local:
+	@curl -s "http://localhost:3200/api/search?q={status=error}&limit=20" | jq 2>/dev/null || echo "Tempo not available"
 
 # Help
 help:
