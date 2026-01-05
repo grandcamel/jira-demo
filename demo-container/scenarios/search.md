@@ -43,10 +43,24 @@ What issues are assigned to me?
 ```
 
 ```
+Show issues assigned to Jane Manager
+```
+
+You should see DEMO-3 and DEMO-4 which are assigned to Jane.
+
+```
 Show unassigned issues in DEMO
 ```
 
-## Step 6: Combined Searches
+## Step 6: Search by Reporter
+
+```
+Find issues reported by Jane
+```
+
+DEMO-8 (Search pagination bug) was reported by Jane Manager.
+
+## Step 7: Combined Searches
 
 ```
 Find high priority bugs that are still open in DEMO
@@ -56,7 +70,7 @@ Find high priority bugs that are still open in DEMO
 Show me stories in DEMO that are in progress or to do
 ```
 
-## Step 7: Time-based Searches
+## Step 8: Time-based Searches
 
 ```
 What issues were created this week in DEMO?
@@ -66,19 +80,19 @@ What issues were created this week in DEMO?
 Show me issues updated in the last 24 hours
 ```
 
-## Step 8: Text Search
+## Step 9: Text Search
 
 ```
 Search for issues mentioning 'login' in DEMO
 ```
 
-## Step 9: Save a Filter
+## Step 10: Save a Filter
 
 ```
 Save this search as 'My Open Bugs': project = DEMO AND type = Bug AND status != Done
 ```
 
-## Step 10: Run a Saved Filter
+## Step 11: Run a Saved Filter
 
 ```
 Run my saved filter 'My Open Bugs'

@@ -42,31 +42,39 @@ What's the progress on epic DEMO-1?
 
 See linked stories and their status.
 
-## Step 6: Add Issue to Sprint
+## Step 6: Check Jane's Sprint Work
+
+```
+What is Jane Manager working on in the current sprint?
+```
+
+DEMO-3 and DEMO-4 are assigned to Jane in this sprint.
+
+## Step 7: Add Issue to Sprint
 
 ```
 Add DEMO-4 to the current sprint
 ```
 
-## Step 7: Estimate Story Points
+## Step 8: Estimate Story Points
 
 ```
 Set story points on DEMO-2 to 5
 ```
 
-## Step 8: Create a Story Under Epic
+## Step 9: Create a Story Under Epic
 
 ```
 Create a story in DEMO: API Rate Limiting, linked to epic DEMO-1, with 3 story points
 ```
 
-## Step 9: Prioritize Backlog
+## Step 10: Prioritize Backlog
 
 ```
 Move DEMO-5 to the top of the backlog
 ```
 
-## Step 10: Sprint Velocity
+## Step 11: Sprint Velocity
 
 ```
 What's the velocity for DEMO over the last 3 sprints?

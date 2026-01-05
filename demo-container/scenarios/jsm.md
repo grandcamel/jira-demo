@@ -62,13 +62,21 @@ See time remaining before SLA breach.
 Show me the service desk queue for DEMOSD
 ```
 
-## Step 9: Assign Request
+## Step 9: Assign Request to Jane
 
 ```
-Assign DEMOSD-1 to me
+Assign DEMOSD-1 to Jane Manager
 ```
 
-## Step 10: Resolve Request
+Jane will handle this password reset request.
+
+## Step 10: Check Jane's Workload
+
+```
+What requests are assigned to Jane?
+```
+
+## Step 11: Resolve Request
 
 ```
 Resolve DEMOSD-1 with resolution: Password reset completed

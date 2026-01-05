@@ -35,31 +35,39 @@ Add a description to DEMO-11: When searching for issues, results appear in rando
 
 Replace DEMO-11 with your actual issue key.
 
-## Step 5: Assign the Bug
+## Step 5: View Jane's Assigned Issues
 
 ```
-Assign DEMO-11 to me
+What issues are assigned to Jane?
 ```
 
-## Step 6: Add a Comment
+DEMO-3 (Login bug) and DEMO-4 (API documentation) are assigned to Jane Manager.
+
+## Step 6: Assign the Bug to Jane
+
+```
+Assign DEMO-11 to Jane Manager
+```
+
+## Step 7: Add a Comment
 
 ```
 Add comment to DEMO-11: Investigating - looks like a sorting algorithm issue
 ```
 
-## Step 7: Transition the Issue
+## Step 8: Transition the Issue
 
 ```
 Move DEMO-11 to In Progress
 ```
 
-## Step 8: Log Time
+## Step 9: Log Time
 
 ```
 Log 30 minutes on DEMO-11 with description: Initial investigation
 ```
 
-## Step 9: Close the Issue
+## Step 10: Close the Issue
 
 ```
 Close DEMO-11 with resolution Fixed

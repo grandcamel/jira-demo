@@ -13,6 +13,9 @@ Show me all epics in DEMO
 # description: Check epic progress (Product Launch)
 What's the progress on epic DEMO-1?
 ---
+# description: Check what Jane is working on this sprint
+What is Jane Manager working on in the current sprint?
+---
 # description: Add an issue to the current sprint
 Add DEMO-4 to the current sprint
 ---

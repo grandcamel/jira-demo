@@ -13,8 +13,11 @@ Show me the details of the bug we just created
 # description: Add a description to the bug
 Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
 ---
-# description: Assign the bug to current user
-Assign that bug to me
+# description: View issues assigned to Jane Manager
+Show me issues assigned to Jane
+---
+# description: Assign the bug to Jane Manager
+Assign that bug to Jane Manager
 ---
 # description: Add a comment to the bug
 Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service

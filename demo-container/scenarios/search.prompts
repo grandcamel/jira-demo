@@ -16,6 +16,12 @@ Show me issues that are In Progress in DEMO
 # description: Search by assignee - find my assigned issues
 What issues are assigned to me in DEMO?
 ---
+# description: Search by assignee - find Jane's assigned issues
+Show me issues assigned to Jane Manager in DEMO
+---
+# description: Search by reporter - find issues reported by Jane
+Find issues reported by Jane in DEMO
+---
 # description: Combined search - high priority open bugs
 Find high priority bugs that are still open in DEMO
 ---

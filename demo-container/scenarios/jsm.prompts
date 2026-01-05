@@ -16,6 +16,12 @@ Add a comment to DEMOSD-1 visible to the customer: We're looking into this and w
 # description: Check SLA status
 What's the SLA status for DEMOSD-1?
 ---
+# description: Assign request to Jane Manager
+Assign DEMOSD-1 to Jane Manager
+---
+# description: Check Jane's service desk workload
+What requests are assigned to Jane?
+---
 # description: Transition the request
 Move DEMOSD-1 to In Progress
 ---
