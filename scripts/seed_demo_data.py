@@ -32,6 +32,9 @@ from otel_setup import init_telemetry, traced, add_span_attribute
 DEMO_PROJECT = "DEMO"
 DEMO_SERVICE_DESK = "DEMOSD"
 
+# Test user for demo scenarios (display name used for lookups)
+JANE_MANAGER_DISPLAY_NAME = "Jane Manager"
+
 # Seed issues for DEMO project
 DEMO_ISSUES = [
     {
@@ -56,6 +59,7 @@ DEMO_ISSUES = [
         "issuetype": "Bug",
         "priority": "High",
         "labels": ["demo", "mobile", "safari"],
+        "assign_to_jane": True,  # Assigned to Jane Manager
     },
     {
         "summary": "Update API documentation",
@@ -63,6 +67,7 @@ DEMO_ISSUES = [
         "issuetype": "Task",
         "priority": "Medium",
         "labels": ["demo", "docs"],
+        "assign_to_jane": True,  # Assigned to Jane Manager
     },
     {
         "summary": "Dashboard redesign",
@@ -94,6 +99,7 @@ DEMO_ISSUES = [
         "issuetype": "Bug",
         "priority": "Medium",
         "labels": ["demo", "search"],
+        "reporter_is_jane": True,  # Reported by Jane Manager
     },
     {
         "summary": "Email notification settings",
@@ -127,8 +133,28 @@ DEMOSD_REQUESTS = [
 ]
 
 
+@traced("seed.find_user_by_name")
+def find_user_by_name(client: Any, display_name: str) -> str | None:
+    """Find a user's account ID by display name."""
+    try:
+        # Search for users by display name
+        response = client._request(
+            "GET",
+            f"/rest/api/3/user/search?query={display_name}",
+        )
+        for user in response:
+            if user.get("displayName") == display_name:
+                account_id = user.get("accountId")
+                add_span_attribute("user.account_id", account_id)
+                return account_id
+        return None
+    except Exception as e:
+        print(f"  Warning: Could not find user '{display_name}': {e}")
+        return None
+
+
 @traced("seed.create_demo_issues")
-def create_demo_issues(client: Any, dry_run: bool = False) -> list[str]:
+def create_demo_issues(client: Any, dry_run: bool = False, jane_account_id: str | None = None) -> list[str]:
     """Create seed issues in DEMO project."""
     created_keys = []
     add_span_attribute("project.key", DEMO_PROJECT)
@@ -165,6 +191,14 @@ def create_demo_issues(client: Any, dry_run: bool = False) -> list[str]:
 
             if issue_data.get("labels"):
                 fields["labels"] = issue_data["labels"]
+
+            # Set assignee if specified and Jane's account ID is available
+            if issue_data.get("assign_to_jane") and jane_account_id:
+                fields["assignee"] = {"accountId": jane_account_id}
+
+            # Set reporter if specified and Jane's account ID is available
+            if issue_data.get("reporter_is_jane") and jane_account_id:
+                fields["reporter"] = {"accountId": jane_account_id}
 
             # Create issue
             result = client.create_issue(fields)
@@ -263,8 +297,18 @@ Examples:
         print("JIRA Demo Sandbox Seeding")
         print("=" * 60)
 
+        # Look up Jane Manager's account ID for assignee/reporter fields
+        jane_account_id = None
+        if not args.dry_run:
+            print(f"\nLooking up test user '{JANE_MANAGER_DISPLAY_NAME}'...")
+            jane_account_id = find_user_by_name(client, JANE_MANAGER_DISPLAY_NAME)
+            if jane_account_id:
+                print(f"  Found: {JANE_MANAGER_DISPLAY_NAME}")
+            else:
+                print(f"  Warning: '{JANE_MANAGER_DISPLAY_NAME}' not found - issues won't have assignee/reporter")
+
         # Create DEMO project issues
-        demo_keys = create_demo_issues(client, args.dry_run)
+        demo_keys = create_demo_issues(client, args.dry_run, jane_account_id)
 
         # Create DEMOSD service desk requests
         sd_keys = create_demo_requests(client, args.dry_run)
