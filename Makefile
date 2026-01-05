@@ -59,7 +59,7 @@ seed-sandbox:
 
 # Invite Management
 invite:
-	@docker-compose exec -T queue-manager node /app/invite-cli.js generate --expires $(or $(EXPIRES),48h) $(if $(LABEL),--label "$(LABEL)",)
+	@docker-compose exec -T queue-manager node /app/invite-cli.js generate --expires $(or $(EXPIRES),48h) $(if $(TOKEN),--token "$(TOKEN)",) $(if $(LABEL),--label "$(LABEL)",)
 
 invite-list:
 	@docker-compose exec -T queue-manager node /app/invite-cli.js list $(if $(STATUS),--status $(STATUS),)
@@ -170,6 +170,7 @@ help:
 	@echo ""
 	@echo "Invite Management:"
 	@echo "  make invite EXPIRES=7d       - Generate invite URL (default: 48h)"
+	@echo "  make invite TOKEN=demo LABEL='Demo' - Generate vanity URL (/demo)"
 	@echo "  make invite EXPIRES=24h LABEL='Workshop' - Generate with label"
 	@echo "  make invite-list             - List all invites"
 	@echo "  make invite-list STATUS=pending - List by status"
