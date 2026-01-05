@@ -851,6 +851,7 @@ async function startSession(ws, client) {
       '-e', `JIRA_EMAIL=${process.env.JIRA_EMAIL}`,
       '-e', `JIRA_SITE_URL=${process.env.JIRA_SITE_URL}`,
       '-e', `SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES}`,
+      '-e', `ENABLE_AUTOPLAY=${process.env.ENABLE_AUTOPLAY || 'false'}`,
       '-v', `${CLAUDE_CREDENTIALS_PATH}:/home/devuser/.claude/.credentials.json:ro`,
       '-v', `${CLAUDE_CONFIG_PATH}:/home/devuser/.claude/.claude.json`,
       'jira-demo-container:latest'

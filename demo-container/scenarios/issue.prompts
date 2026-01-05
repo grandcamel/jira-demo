@@ -1,0 +1,27 @@
+# description: View all issues in the DEMO project
+Show me all issues in project DEMO
+---
+# description: Get details of the Product Launch epic (DEMO-1)
+What's the status of DEMO-1?
+---
+# description: Create a new high priority bug
+Create a high priority bug in DEMO: Search results are not sorted correctly
+---
+# description: View the bug we just created
+Show me the details of the bug we just created
+---
+# description: Add a description to the bug
+Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
+---
+# description: Assign the bug to current user
+Assign that bug to me
+---
+# description: Add a comment to the bug
+Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
+---
+# description: Transition the bug to In Progress
+Move that bug to In Progress
+---
+# description: Log work time on the bug
+Log 30 minutes on the bug with description: Initial investigation and root cause analysis
+---

@@ -26,6 +26,8 @@ services:
       - CLAUDE_CREDENTIALS_PATH=${PWD}/secrets/.credentials.json
       - CLAUDE_CONFIG_PATH=${PWD}/secrets/.claude.json
       - OTEL_LOG_LEVEL=debug
+      # Uncomment to enable auto-play feature (experimental)
+      # - ENABLE_AUTOPLAY=true
     command: ["node", "--watch", "--require", "./instrumentation.js", "server.js"]
 
   redis:

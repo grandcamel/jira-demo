@@ -1,0 +1,21 @@
+# description: View service desk queues
+Show me the service desk queues for DEMOSD
+---
+# description: View open requests
+What are the open requests in DEMOSD?
+---
+# description: Get details of a service request
+Show me the details of DEMOSD-1
+---
+# description: Add an internal comment (not visible to customer)
+Add an internal comment to DEMOSD-1: Investigating this issue - checking server logs
+---
+# description: Add a customer-visible comment
+Add a comment to DEMOSD-1 visible to the customer: We're looking into this and will update you shortly
+---
+# description: Check SLA status
+What's the SLA status for DEMOSD-1?
+---
+# description: Transition the request
+Move DEMOSD-1 to In Progress
+---

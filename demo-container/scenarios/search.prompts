@@ -1,0 +1,24 @@
+# description: Basic search - find all open issues
+Show me all open issues in DEMO
+---
+# description: Search by issue type - find all bugs
+Find all bugs in DEMO
+---
+# description: Search by issue type - find all stories
+Show me all stories in DEMO
+---
+# description: Search by priority - find high priority issues
+What are the high priority issues in DEMO?
+---
+# description: Search by status - find in-progress issues
+Show me issues that are In Progress in DEMO
+---
+# description: Search by assignee - find my assigned issues
+What issues are assigned to me in DEMO?
+---
+# description: Combined search - high priority open bugs
+Find high priority bugs that are still open in DEMO
+---
+# description: Text search - find issues mentioning login
+Search for issues mentioning 'login' in DEMO
+---

@@ -1,0 +1,24 @@
+# description: View the project backlog
+Show me the backlog for project DEMO
+---
+# description: View the current sprint
+What's in the current sprint for DEMO?
+---
+# description: Check sprint progress
+What's the sprint progress for DEMO?
+---
+# description: View all epics in the project
+Show me all epics in DEMO
+---
+# description: Check epic progress (Product Launch)
+What's the progress on epic DEMO-1?
+---
+# description: Add an issue to the current sprint
+Add DEMO-4 to the current sprint
+---
+# description: Set story points on an issue
+Set story points on DEMO-2 to 5
+---
+# description: Create a new story under the epic
+Create a story in DEMO: Implement API rate limiting, linked to epic DEMO-1, with 3 story points
+---

@@ -126,6 +126,9 @@ show_menu() {
     echo -e "${CYAN}║${NC}  ${GREEN}1)${NC} View Scenarios                                            ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}2)${NC} Start Claude (interactive mode)                          ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}3)${NC} Start Bash Shell                                         ${CYAN}║${NC}"
+    if [ "${ENABLE_AUTOPLAY:-false}" = "true" ]; then
+        echo -e "${CYAN}║${NC}  ${GREEN}4)${NC} Auto-play Scenario ${YELLOW}(watch a live demo)${NC}                   ${CYAN}║${NC}"
+    fi
     echo -e "${CYAN}║${NC}  ${GREEN}q)${NC} Exit                                                     ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
@@ -173,6 +176,56 @@ scenarios_loop() {
     done
 }
 
+show_autoplay_menu() {
+    echo ""
+    echo -e "${CYAN}Auto-play Scenarios:${NC}"
+    echo -e "  ${GREEN}1)${NC} Issue Management  - Create, update, transition issues"
+    echo -e "  ${GREEN}2)${NC} Search & JQL      - Find issues using natural language"
+    echo -e "  ${GREEN}3)${NC} Agile Workflows   - Sprints, epics, story points"
+    echo -e "  ${GREEN}4)${NC} Service Desk      - JSM requests and comments"
+    echo -e "  ${GREEN}b)${NC} Back to main menu"
+    echo ""
+    echo -e "${YELLOW}Tip: Press Ctrl+C during auto-play to pause and take over${NC}"
+    echo ""
+}
+
+autoplay_loop() {
+    while true; do
+        clear
+        cat /etc/motd
+        show_autoplay_menu
+        read -rp "Select scenario to auto-play: " choice
+        case $choice in
+            1)
+                /workspace/autoplay.sh issue || true
+                echo ""
+                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
+                read -r
+                ;;
+            2)
+                /workspace/autoplay.sh search || true
+                echo ""
+                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
+                read -r
+                ;;
+            3)
+                /workspace/autoplay.sh agile || true
+                echo ""
+                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
+                read -r
+                ;;
+            4)
+                /workspace/autoplay.sh jsm || true
+                echo ""
+                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
+                read -r
+                ;;
+            b|B) return ;;
+            *) echo -e "${YELLOW}Invalid option${NC}"; sleep 1 ;;
+        esac
+    done
+}
+
 main_menu_loop() {
     while true; do
         clear
@@ -200,6 +253,14 @@ main_menu_loop() {
                 echo -e "${YELLOW}     Run 'claude --dangerously-skip-permissions' to start Claude${NC}"
                 echo ""
                 /bin/bash -l || true
+                ;;
+            4)
+                if [ "${ENABLE_AUTOPLAY:-false}" = "true" ]; then
+                    autoplay_loop
+                else
+                    echo -e "${YELLOW}Invalid option${NC}"
+                    sleep 1
+                fi
                 ;;
             q|Q)
                 echo -e "${GREEN}Goodbye! Thanks for trying JIRA Assistant Skills.${NC}"
