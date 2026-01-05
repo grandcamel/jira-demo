@@ -174,6 +174,57 @@ redis --> redis-exporter --> Prometheus
 
 **Config files:** `observability/` directory contains all LGTM configuration.
 
+## Production Deployment
+
+**Domain:** `assistant-skills.dev`
+**Droplet:** DigitalOcean `jira-demo` (143.110.131.254)
+
+SSH access: `ssh root@assistant-skills.dev`
+
+## Slash Commands
+
+Available slash commands in `.claude/commands/`:
+
+| Command | Description |
+|---------|-------------|
+| `/status` | Check full production system status |
+| `/status-local` | Check full local dev system status |
+| `/health` | Check production health |
+| `/health-local` | Check local dev health |
+| `/start` | Start production services |
+| `/start-local` | Start local dev services |
+| `/stop` | Stop production services |
+| `/stop-local` | Stop local dev services |
+| `/restart` | Restart production services |
+| `/restart-local` | Restart local dev services |
+| `/queue-status` | Check production queue |
+| `/queue-status-local` | Check local dev queue |
+| `/queue-reset` | Reset production queue |
+| `/queue-reset-local` | Reset local dev queue |
+| `/invite` | Create production invite |
+| `/invite-local` | Create local dev invite |
+| `/refresh-prod-token` | Display command to refresh production OAuth token |
+| `/refresh-token` | Display command to refresh local OAuth token |
+| `/logs-errors` | View production errors from Loki |
+| `/logs-errors-local` | View local dev errors |
+| `/traces-errors` | View production error traces from Tempo |
+| `/traces-errors-local` | View local dev error traces |
+
+**Creating new slash commands:**
+
+Prefer calling Makefile targets to avoid shell quoting issues:
+
+```markdown
+---
+description: My command description
+---
+\`\`\`bash
+make my-target
+\`\`\`
+```
+
+For complex logic, add a Makefile target first, then create a simple slash command that calls it.
+
 ## Experimental Features
 
 **Auto-play scenarios** (disabled by default):
