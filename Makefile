@@ -99,12 +99,14 @@ refresh-token:
 	@echo "Starting Claude for authentication..."
 	@echo "Exit Claude after login completes (Ctrl+C or type 'exit')"
 	@docker run -it --rm \
+		--user root \
 		--entrypoint bash \
 		-v $(PWD)/secrets:/home/devuser/.claude \
 		jira-demo-container:latest \
-		-c "claude"
+		-c "chown -R devuser:node /home/devuser/.claude && su devuser -c 'claude'"
 	@echo ""
 	@echo "✓ Credentials saved to secrets/"
+	@chmod 644 secrets/.credentials.json secrets/.claude.json 2>/dev/null || true
 	@$(MAKE) check-token
 
 clean:
