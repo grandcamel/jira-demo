@@ -18,6 +18,12 @@ NC='\033[0m'
 SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-60}"
 SESSION_TIMEOUT_SECONDS=$((SESSION_TIMEOUT_MINUTES * 60))
 
+# Copy Claude config from mounted source (allows Claude to write to it)
+if [ -f /tmp/.claude.json.source ]; then
+    cp /tmp/.claude.json.source /home/devuser/.claude/.claude.json
+    chmod 644 /home/devuser/.claude/.claude.json
+fi
+
 # Display welcome message
 clear
 cat /etc/motd

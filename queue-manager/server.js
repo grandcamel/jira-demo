@@ -853,7 +853,7 @@ async function startSession(ws, client) {
       '-e', `SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES}`,
       '-e', `ENABLE_AUTOPLAY=${process.env.ENABLE_AUTOPLAY || 'false'}`,
       '-v', `${CLAUDE_CREDENTIALS_PATH}:/home/devuser/.claude/.credentials.json:ro`,
-      '-v', `${CLAUDE_CONFIG_PATH}:/home/devuser/.claude/.claude.json`,
+      '-v', `${CLAUDE_CONFIG_PATH}:/tmp/.claude.json.source:ro`,
       'jira-demo-container:latest'
     ], {
       stdio: ['pipe', 'pipe', 'pipe']
