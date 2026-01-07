@@ -94,7 +94,11 @@ get_terminal_width() {
 repeat_char() {
     local char="$1"
     local count="$2"
-    printf "%${count}s" | tr ' ' "$char"
+    local result=""
+    for ((i=0; i<count; i++)); do
+        result+="$char"
+    done
+    printf "%s" "$result"
 }
 
 # =============================================================================
@@ -265,15 +269,37 @@ process_stream() {
         event_type=$(echo "$line" | jq -r '.type // empty')
 
         case "$event_type" in
+            system)
+                # Initialization event - skip
+                ;;
+
             assistant)
-                # Start of assistant message
+                # Full assistant message with content
                 if [[ "$in_claude_box" == false ]]; then
                     display_claude_header
                     in_claude_box=true
                 fi
+
+                # Extract text from message.content array
+                local text
+                text=$(echo "$line" | jq -r '.message.content[] | select(.type=="text") | .text // empty' 2>/dev/null)
+                if [[ -n "$text" ]]; then
+                    # Print each line in the box
+                    while IFS= read -r text_line; do
+                        if [[ -n "$text_line" ]]; then
+                            draw_box_line "$C_CLAUDE_BORDER" "$text_line"
+                        fi
+                    done <<< "$text"
+                fi
                 ;;
 
             content_block_delta)
+                # Streaming delta (may not be used with current format)
+                if [[ "$in_claude_box" == false ]]; then
+                    display_claude_header
+                    in_claude_box=true
+                fi
+
                 local delta_type text
                 delta_type=$(echo "$line" | jq -r '.delta.type // empty')
 
@@ -283,7 +309,6 @@ process_stream() {
                         accumulated_text+="$text"
                         # Print when we hit a newline or have enough text
                         if [[ "$text" == *$'\n'* ]] || [[ ${#accumulated_text} -gt 60 ]]; then
-                            # Split by newlines and print each line in box
                             while IFS= read -r text_line; do
                                 if [[ -n "$text_line" ]]; then
                                     draw_box_line "$C_CLAUDE_BORDER" "$text_line"
@@ -445,18 +470,100 @@ process_stream() {
 }
 
 # =============================================================================
+# Spinner (Claude Code style)
+# =============================================================================
+
+SPINNER_PID=""
+SPINNER_CHARS="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+# Claude Code rotating status messages
+SPINNER_MESSAGES=(
+    "Thinking"
+    "Pondering"
+    "Reasoning"
+    "Considering"
+    "Analyzing"
+    "Processing"
+    "Contemplating"
+    "Evaluating"
+    "Reflecting"
+)
+
+# Claude Code purple/magenta branding
+C_CLAUDE_SPINNER='\033[1;35m'  # Bold magenta
+
+start_spinner() {
+    (
+        local spin_idx=0
+        local msg_idx=0
+        local spin_len=${#SPINNER_CHARS}
+        local msg_len=${#SPINNER_MESSAGES[@]}
+        local tick=0
+
+        while true; do
+            local char="${SPINNER_CHARS:$spin_idx:1}"
+            local message="${SPINNER_MESSAGES[$msg_idx]}"
+            printf "\r${C_CLAUDE_SPINNER}  %s %s...${C_RESET}   " "$char" "$message"
+
+            spin_idx=$(( (spin_idx + 1) % spin_len ))
+            tick=$((tick + 1))
+
+            # Change message every ~20 ticks (2 seconds)
+            if [[ $((tick % 20)) -eq 0 ]]; then
+                msg_idx=$(( (msg_idx + 1) % msg_len ))
+            fi
+
+            sleep 0.1
+        done
+    ) &
+    SPINNER_PID=$!
+}
+
+stop_spinner() {
+    if [[ -n "$SPINNER_PID" ]]; then
+        kill "$SPINNER_PID" 2>/dev/null
+        wait "$SPINNER_PID" 2>/dev/null
+        SPINNER_PID=""
+        printf "\r\033[K"  # Clear the spinner line
+    fi
+}
+
+# =============================================================================
 # Claude Execution
 # =============================================================================
 
 run_claude_prompt() {
     local prompt="$1"
+    local output
+    local exit_code
 
-    # Run Claude with streaming and pipe to processor
-    claude -p --output-format stream-json \
+    # Start Claude Code style spinner
+    start_spinner
+
+    # Run Claude with streaming and capture output
+    output=$(claude -p --output-format stream-json --verbose \
            --dangerously-skip-permissions \
-           "$prompt" 2>&1 | process_stream
+           "$prompt" 2>&1)
+    exit_code=$?
 
-    return ${PIPESTATUS[0]}
+    # Stop spinner
+    stop_spinner
+
+    # Check if we got any output
+    if [[ -z "$output" ]]; then
+        echo -e "${C_RED}  [No output from Claude - exit code: $exit_code]${C_RESET}"
+        return 1
+    fi
+
+    # Process the output
+    echo "$output" | process_stream
+    local process_exit=${PIPESTATUS[1]}
+
+    # Return error if either Claude or processing failed
+    if [[ $exit_code -ne 0 ]]; then
+        return $exit_code
+    fi
+    return $process_exit
 }
 
 # =============================================================================
@@ -532,6 +639,7 @@ wait_for_advance() {
 # =============================================================================
 
 pause_handler() {
+    stop_spinner  # Ensure spinner is stopped
     if [[ "$PAUSED" == false ]]; then
         PAUSED=true
         echo ""
@@ -548,7 +656,12 @@ pause_handler() {
     fi
 }
 
+cleanup_on_exit() {
+    stop_spinner
+}
+
 trap pause_handler SIGINT
+trap cleanup_on_exit EXIT
 
 # =============================================================================
 # Usage and Argument Parsing
