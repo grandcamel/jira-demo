@@ -23,7 +23,7 @@ except ImportError:
     print("Run: pip install jira-assistant-skills-lib")
     sys.exit(1)
 
-from otel_setup import init_telemetry, traced, trace_span, add_span_attribute
+from otel_setup import init_telemetry, traced, add_span_attribute
 
 
 # =============================================================================

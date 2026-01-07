@@ -16,7 +16,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 
 # =============================================================================
@@ -123,7 +122,7 @@ def run_skill_test(
                     return False, ctx
                 except json.JSONDecodeError:
                     continue
-            print(f"Error: Could not parse fix context from output")
+            print("Error: Could not parse fix context from output")
             print(result.stdout[-1000:])
             return False, None
     else:
@@ -266,7 +265,7 @@ def run_refinement_loop(
     Returns: True if all tests pass, False otherwise
     """
     print(f"{'=' * 70}")
-    print(f"SKILL REFINEMENT LOOP")
+    print("SKILL REFINEMENT LOOP")
     print(f"{'=' * 70}")
     print(f"Scenario: {scenario}")
     print(f"Skills path: {jira_skills_path}")

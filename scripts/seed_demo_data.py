@@ -314,7 +314,7 @@ def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
                 continue
             except Exception as e:
                 print(f"  JSM API failed for {summary}: {e}")
-                print(f"  Falling back to standard issue creation...")
+                print("  Falling back to standard issue creation...")
 
         # Fallback to standard issue creation
         try:
