@@ -36,6 +36,10 @@ RUN chmod 755 /workspace/autoplay.sh && chown devuser:node /workspace/autoplay.s
 COPY skill-test.py /workspace/skill-test.py
 RUN chmod 755 /workspace/skill-test.py && chown devuser:node /workspace/skill-test.py
 
+# Install Python dependencies for skill-test telemetry
+RUN pip install --no-cache-dir requests opentelemetry-api opentelemetry-sdk \
+    opentelemetry-exporter-otlp-proto-http
+
 # Create demo working directory
 RUN mkdir -p /workspace/demo && chown devuser:node /workspace/demo
 

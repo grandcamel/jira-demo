@@ -6,22 +6,203 @@ Runs prompts through Claude, captures tool usage and response text,
 asserts against deterministic patterns, and uses LLM-as-judge for
 semantic quality evaluation.
 
+Telemetry:
+    - Traces sent to Tempo via OTLP (spans for test runs, prompts, Claude calls)
+    - Logs sent to Loki (prompts, responses, tool usage, assertions)
+    - Debug mode enabled by default (use --no-debug to disable)
+
 Usage:
     python skill-test.py scenarios/search.prompts
     python skill-test.py scenarios/search.prompts --model sonnet --judge-model haiku
     python skill-test.py scenarios/search.prompts --verbose
+    python skill-test.py scenarios/search.prompts --no-debug  # Disable telemetry
 """
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
+import requests
 import yaml
+
+# =============================================================================
+# Telemetry Setup
+# =============================================================================
+
+# OpenTelemetry imports - optional dependency
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import Status, StatusCode
+
+    OTEL_AVAILABLE = True
+except ImportError:
+    OTEL_AVAILABLE = False
+
+# Module-level tracer and config
+_tracer: Optional[Any] = None
+_loki_endpoint: Optional[str] = None
+_debug_enabled: bool = True
+_scenario_name: str = "unknown"
+
+
+# Module-level provider for shutdown
+_trace_provider: Optional[Any] = None
+
+
+def init_telemetry(
+    service_name: str = "skill-test",
+    scenario: str = "unknown",
+    debug: bool = True,
+) -> Optional[Any]:
+    """Initialize OpenTelemetry tracing and Loki logging."""
+    global _tracer, _loki_endpoint, _debug_enabled, _scenario_name, _trace_provider
+
+    _debug_enabled = debug
+    _scenario_name = scenario
+
+    if not debug:
+        print("[OTEL] Debug mode disabled, telemetry off")
+        return None
+
+    # Configure endpoints
+    otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+    _loki_endpoint = os.environ.get("LOKI_ENDPOINT", "http://localhost:3100")
+
+    # For Docker containers, use host.docker.internal
+    if os.path.exists("/.dockerenv"):
+        otel_endpoint = os.environ.get(
+            "OTEL_EXPORTER_OTLP_ENDPOINT", "http://host.docker.internal:4318"
+        )
+        _loki_endpoint = os.environ.get(
+            "LOKI_ENDPOINT", "http://host.docker.internal:3100"
+        )
+
+    # Initialize tracing if available
+    if OTEL_AVAILABLE:
+        try:
+            resource = Resource.create({
+                "service.name": service_name,
+                "service.version": "1.0.0",
+                "scenario": scenario,
+            })
+
+            _trace_provider = TracerProvider(resource=resource)
+            exporter = OTLPSpanExporter(endpoint=f"{otel_endpoint}/v1/traces")
+            _trace_provider.add_span_processor(BatchSpanProcessor(exporter))
+            trace.set_tracer_provider(_trace_provider)
+            _tracer = trace.get_tracer(service_name)
+
+            print(f"[OTEL] Tracing initialized -> {otel_endpoint}")
+        except Exception as e:
+            print(f"[OTEL] Failed to initialize tracing: {e}")
+            _tracer = None
+    else:
+        print("[OTEL] OpenTelemetry not installed, tracing disabled")
+
+    print(f"[OTEL] Loki logging -> {_loki_endpoint}")
+    return _tracer
+
+
+def shutdown_telemetry() -> None:
+    """Shutdown telemetry and flush all pending spans."""
+    global _trace_provider
+    if _trace_provider is not None:
+        try:
+            _trace_provider.force_flush(timeout_millis=5000)
+            _trace_provider.shutdown()
+            print("[OTEL] Telemetry shutdown complete")
+        except Exception as e:
+            print(f"[OTEL] Shutdown error: {e}")
+
+
+def log_to_loki(
+    message: str,
+    level: str = "info",
+    labels: Optional[dict] = None,
+    extra: Optional[dict] = None,
+) -> None:
+    """Send a log entry to Loki."""
+    if not _debug_enabled or not _loki_endpoint:
+        return
+
+    try:
+        timestamp_ns = str(int(time.time() * 1e9))
+
+        # Build log line with extra data
+        log_data = {"message": message, "level": level}
+        if extra:
+            log_data.update(extra)
+
+        log_line = json.dumps(log_data)
+
+        # Build stream labels
+        stream_labels = {
+            "job": "skill-test",
+            "scenario": _scenario_name,
+            "level": level,
+        }
+        if labels:
+            stream_labels.update(labels)
+
+        payload = {
+            "streams": [{
+                "stream": stream_labels,
+                "values": [[timestamp_ns, log_line]],
+            }]
+        }
+
+        # Fire and forget
+        requests.post(
+            f"{_loki_endpoint}/loki/api/v1/push",
+            json=payload,
+            timeout=2,
+        )
+    except Exception:
+        pass  # Don't fail tests due to logging issues
+
+
+@contextmanager
+def trace_span(
+    name: str,
+    attributes: Optional[dict] = None,
+    record_exception: bool = True,
+):
+    """Context manager for creating trace spans with timing."""
+    start_time = time.time()
+
+    if _tracer is None:
+        yield None
+        return
+
+    with _tracer.start_as_current_span(name) as span:
+        if attributes:
+            for key, value in attributes.items():
+                if value is not None:
+                    span.set_attribute(key, str(value) if not isinstance(value, (int, float, bool)) else value)
+        try:
+            yield span
+            span.set_status(Status(StatusCode.OK))
+        except Exception as e:
+            span.set_status(Status(StatusCode.ERROR, str(e)))
+            if record_exception:
+                span.record_exception(e)
+            raise
+        finally:
+            duration_ms = (time.time() - start_time) * 1000
+            span.set_attribute("duration_ms", duration_ms)
 
 
 # =============================================================================
@@ -157,11 +338,12 @@ def run_claude_prompt(
     prompt: str,
     model: str = "sonnet",
     verbose: bool = False,
-) -> tuple[str, list[ToolCall], int]:
+    prompt_index: int = 0,
+) -> tuple[str, list[ToolCall], int, float]:
     """
     Run a prompt through Claude and capture structured output.
 
-    Returns: (response_text, tools_called, exit_code)
+    Returns: (response_text, tools_called, exit_code, duration_seconds)
     """
     cmd = [
         "claude",
@@ -175,65 +357,165 @@ def run_claude_prompt(
     if verbose:
         print(f"  Running: claude -p '...' --model {model}")
 
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300,  # 5 minute timeout
-        )
-    except subprocess.TimeoutExpired:
-        return "", [], 1
-    except Exception as e:
-        print(f"  Error running Claude: {e}")
-        return "", [], 1
+    # Log prompt to Loki
+    log_to_loki(
+        f"Running prompt {prompt_index}",
+        level="info",
+        labels={"prompt_index": str(prompt_index), "model": model},
+        extra={
+            "event": "prompt_start",
+            "prompt_text": prompt[:1000],
+            "model": model,
+            "prompt_index": prompt_index,
+        },
+    )
 
-    # Parse Claude Code's stream-json output format
-    # Format: {"type":"assistant","message":{content:[...]}} and {"type":"result",...}
-    response_text = ""
-    tools_called = []
+    start_time = time.time()
 
-    for line in result.stdout.strip().split("\n"):
-        if not line:
-            continue
-
+    with trace_span(
+        "claude.prompt",
+        attributes={
+            "prompt_index": prompt_index,
+            "model": model,
+            "prompt_length": len(prompt),
+            "prompt_preview": prompt[:100],
+        },
+    ) as span:
         try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+        except subprocess.TimeoutExpired:
+            duration = time.time() - start_time
+            log_to_loki(
+                f"Prompt {prompt_index} timed out after {duration:.1f}s",
+                level="error",
+                labels={"prompt_index": str(prompt_index)},
+                extra={"event": "prompt_timeout", "duration_seconds": duration},
+            )
+            if span:
+                span.set_attribute("error", "timeout")
+            return "", [], 1, duration
+        except Exception as e:
+            duration = time.time() - start_time
+            log_to_loki(
+                f"Prompt {prompt_index} failed: {e}",
+                level="error",
+                labels={"prompt_index": str(prompt_index)},
+                extra={"event": "prompt_error", "error": str(e)},
+            )
+            print(f"  Error running Claude: {e}")
+            if span:
+                span.set_attribute("error", str(e))
+            return "", [], 1, duration
 
-        event_type = event.get("type", "")
+        duration = time.time() - start_time
 
-        # Handle assistant message with content blocks
-        if event_type == "assistant":
-            message = event.get("message", {})
-            content_blocks = message.get("content", [])
+        # Parse Claude Code's stream-json output format
+        response_text = ""
+        tools_called = []
+        token_count = 0
+        cost_usd = 0.0
 
-            for block in content_blocks:
-                block_type = block.get("type", "")
+        for line in result.stdout.strip().split("\n"):
+            if not line:
+                continue
 
-                if block_type == "text":
-                    response_text += block.get("text", "")
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
 
-                elif block_type == "tool_use":
-                    tools_called.append(ToolCall(
-                        name=block.get("name", ""),
-                        input=block.get("input", {}),
-                    ))
+            event_type = event.get("type", "")
 
-        # Handle tool result (when Claude runs tools)
-        elif event_type == "tool_result":
-            tool_result = event.get("tool_result", {})
-            # Update the last tool with its result if available
-            if tools_called and tool_result:
-                tools_called[-1].output = str(tool_result.get("content", ""))[:500]
+            # Handle assistant message with content blocks
+            if event_type == "assistant":
+                message = event.get("message", {})
+                content_blocks = message.get("content", [])
 
-        # Final result - fallback for response text
-        elif event_type == "result":
-            if not response_text:
-                response_text = event.get("result", "")
+                for block in content_blocks:
+                    block_type = block.get("type", "")
 
-    return response_text, tools_called, result.returncode
+                    if block_type == "text":
+                        response_text += block.get("text", "")
+
+                    elif block_type == "tool_use":
+                        tool = ToolCall(
+                            name=block.get("name", ""),
+                            input=block.get("input", {}),
+                        )
+                        tools_called.append(tool)
+
+                        # Log each tool use
+                        log_to_loki(
+                            f"Tool called: {tool.name}",
+                            level="debug",
+                            labels={"prompt_index": str(prompt_index), "tool": tool.name},
+                            extra={
+                                "event": "tool_use",
+                                "tool_name": tool.name,
+                                "tool_input": json.dumps(tool.input)[:500],
+                            },
+                        )
+
+            # Handle tool result (when Claude runs tools)
+            elif event_type == "tool_result":
+                tool_result = event.get("tool_result", {})
+                if tools_called and tool_result:
+                    tools_called[-1].output = str(tool_result.get("content", ""))[:500]
+
+                    # Log tool result
+                    log_to_loki(
+                        f"Tool result for {tools_called[-1].name}",
+                        level="debug",
+                        labels={"prompt_index": str(prompt_index), "tool": tools_called[-1].name},
+                        extra={
+                            "event": "tool_result",
+                            "tool_name": tools_called[-1].name,
+                            "result_preview": tools_called[-1].output[:200],
+                        },
+                    )
+
+            # Final result - capture metrics
+            elif event_type == "result":
+                if not response_text:
+                    response_text = event.get("result", "")
+                cost_usd = event.get("cost_usd", 0.0)
+                # Token counts if available
+                usage = event.get("usage", {})
+                token_count = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+
+        # Add span attributes for analysis
+        if span:
+            span.set_attribute("response_length", len(response_text))
+            span.set_attribute("tools_count", len(tools_called))
+            span.set_attribute("tools_called", ",".join(t.name for t in tools_called))
+            span.set_attribute("exit_code", result.returncode)
+            span.set_attribute("cost_usd", cost_usd)
+            span.set_attribute("token_count", token_count)
+            span.set_attribute("duration_seconds", duration)
+
+        # Log completion
+        log_to_loki(
+            f"Prompt {prompt_index} completed in {duration:.1f}s",
+            level="info",
+            labels={"prompt_index": str(prompt_index)},
+            extra={
+                "event": "prompt_complete",
+                "duration_seconds": duration,
+                "response_length": len(response_text),
+                "tools_count": len(tools_called),
+                "tools_called": [t.name for t in tools_called],
+                "exit_code": result.returncode,
+                "cost_usd": cost_usd,
+                "response_preview": response_text[:500],
+            },
+        )
+
+        return response_text, tools_called, result.returncode, duration
 
 
 # =============================================================================
@@ -427,55 +709,115 @@ def run_llm_judge(
         "--dangerously-skip-permissions",
     ]
 
-    try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-    except Exception as e:
-        return {
-            "quality": "unknown",
-            "tool_accuracy": "unknown",
-            "reasoning": f"Judge failed: {e}",
-            "refinement_suggestion": "",
-            "expectation_suggestion": "",
-        }
+    start_time = time.time()
 
-    # Parse JSON response from text output
-    try:
-        output = proc.stdout.strip()
+    with trace_span(
+        "llm.judge",
+        attributes={
+            "prompt_index": result.spec.index,
+            "model": model,
+            "tools_called": ",".join(tools_called),
+        },
+    ) as span:
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except Exception as e:
+            duration = time.time() - start_time
+            log_to_loki(
+                f"Judge failed for prompt {result.spec.index}: {e}",
+                level="error",
+                labels={"prompt_index": str(result.spec.index)},
+                extra={"event": "judge_error", "error": str(e)},
+            )
+            if span:
+                span.set_attribute("error", str(e))
+            return {
+                "quality": "unknown",
+                "tool_accuracy": "unknown",
+                "reasoning": f"Judge failed: {e}",
+                "refinement_suggestion": "",
+                "expectation_suggestion": "",
+            }
 
-        # Try to extract JSON from response
-        # Handle potential markdown code blocks
-        if "```json" in output:
-            output = output.split("```json")[1].split("```")[0].strip()
-        elif "```" in output:
-            output = output.split("```")[1].split("```")[0].strip()
+        duration = time.time() - start_time
 
-        # Try to find JSON object in output
-        json_start = output.find("{")
-        json_end = output.rfind("}") + 1
-        if json_start >= 0 and json_end > json_start:
-            output = output[json_start:json_end]
+        # Parse JSON response from text output
+        try:
+            output = proc.stdout.strip()
 
-        judge_result = json.loads(output)
-        return {
-            "quality": judge_result.get("quality", "unknown"),
-            "tool_accuracy": judge_result.get("tool_accuracy", "unknown"),
-            "reasoning": judge_result.get("reasoning", ""),
-            "refinement_suggestion": judge_result.get("refinement_suggestion", ""),
-            "expectation_suggestion": judge_result.get("expectation_suggestion", ""),
-        }
-    except (json.JSONDecodeError, IndexError) as e:
-        return {
-            "quality": "unknown",
-            "tool_accuracy": "unknown",
-            "reasoning": f"Failed to parse judge response: {str(e)[:100]} - Output: {proc.stdout[:300]}",
-            "refinement_suggestion": "",
-            "expectation_suggestion": "",
-        }
+            # Try to extract JSON from response
+            # Handle potential markdown code blocks
+            if "```json" in output:
+                output = output.split("```json")[1].split("```")[0].strip()
+            elif "```" in output:
+                output = output.split("```")[1].split("```")[0].strip()
+
+            # Try to find JSON object in output
+            json_start = output.find("{")
+            json_end = output.rfind("}") + 1
+            if json_start >= 0 and json_end > json_start:
+                output = output[json_start:json_end]
+
+            judge_result = json.loads(output)
+            parsed_result = {
+                "quality": judge_result.get("quality", "unknown"),
+                "tool_accuracy": judge_result.get("tool_accuracy", "unknown"),
+                "reasoning": judge_result.get("reasoning", ""),
+                "refinement_suggestion": judge_result.get("refinement_suggestion", ""),
+                "expectation_suggestion": judge_result.get("expectation_suggestion", ""),
+            }
+
+            # Add span attributes
+            if span:
+                span.set_attribute("quality", parsed_result["quality"])
+                span.set_attribute("tool_accuracy", parsed_result["tool_accuracy"])
+                span.set_attribute("duration_seconds", duration)
+
+            # Log judge result
+            log_to_loki(
+                f"Judge completed for prompt {result.spec.index}: quality={parsed_result['quality']}",
+                level="info",
+                labels={
+                    "prompt_index": str(result.spec.index),
+                    "quality": parsed_result["quality"],
+                },
+                extra={
+                    "event": "judge_complete",
+                    "duration_seconds": duration,
+                    "quality": parsed_result["quality"],
+                    "tool_accuracy": parsed_result["tool_accuracy"],
+                    "reasoning": parsed_result["reasoning"][:300],
+                },
+            )
+
+            return parsed_result
+        except (json.JSONDecodeError, IndexError) as e:
+            if span:
+                span.set_attribute("error", f"parse_failed: {e}")
+
+            log_to_loki(
+                f"Judge parse failed for prompt {result.spec.index}",
+                level="error",
+                labels={"prompt_index": str(result.spec.index)},
+                extra={
+                    "event": "judge_parse_error",
+                    "error": str(e),
+                    "raw_output": proc.stdout[:500],
+                },
+            )
+
+            return {
+                "quality": "unknown",
+                "tool_accuracy": "unknown",
+                "reasoning": f"Failed to parse judge response: {str(e)[:100]} - Output: {proc.stdout[:300]}",
+                "refinement_suggestion": "",
+                "expectation_suggestion": "",
+            }
 
 
 # =============================================================================
@@ -736,6 +1078,8 @@ def run_skill_test(
     prompt_index: int | None = None,
 ) -> list[PromptResult]:
     """Run skill test for a scenario."""
+    scenario_name = prompts_file.stem
+    test_start_time = time.time()
 
     # Parse prompts file
     specs = parse_prompts_file(prompts_file)
@@ -756,66 +1100,161 @@ def run_skill_test(
     print(f"Model: {model}, Judge: {judge_model}")
     print()
 
+    # Log test start
+    log_to_loki(
+        f"Starting skill test: {scenario_name}",
+        level="info",
+        extra={
+            "event": "test_start",
+            "scenario": scenario_name,
+            "prompt_count": len(specs),
+            "model": model,
+            "judge_model": judge_model,
+        },
+    )
+
     results: list[PromptResult] = []
     captured_values: dict[str, str] = {}
+    total_duration = 0.0
+    total_cost = 0.0
 
-    for spec in specs:
-        print(f"[{spec.index + 1}/{len(specs)}] {spec.prompt[:50]}...")
+    with trace_span(
+        "skill_test.run",
+        attributes={
+            "scenario": scenario_name,
+            "prompt_count": len(specs),
+            "model": model,
+            "judge_model": judge_model,
+        },
+    ) as test_span:
+        for spec in specs:
+            print(f"[{spec.index + 1}/{len(specs)}] {spec.prompt[:50]}...")
 
-        # Interpolate captured values if needed
-        prompt = spec.prompt
-        if spec.expect.validates and spec.expect.validates in captured_values:
-            prompt = interpolate_prompt(prompt, captured_values)
-            if verbose:
-                print(f"  Interpolated: {prompt[:50]}...")
+            # Interpolate captured values if needed
+            prompt = spec.prompt
+            if spec.expect.validates and spec.expect.validates in captured_values:
+                prompt = interpolate_prompt(prompt, captured_values)
+                if verbose:
+                    print(f"  Interpolated: {prompt[:50]}...")
 
-        # Run Claude
-        response_text, tools_called, exit_code = run_claude_prompt(
-            prompt, model=model, verbose=verbose
+            # Run Claude (now returns 4 values including duration)
+            with trace_span(
+                "skill_test.prompt",
+                attributes={
+                    "prompt_index": spec.index,
+                    "prompt_preview": spec.prompt[:100],
+                },
+            ) as prompt_span:
+                response_text, tools_called, exit_code, prompt_duration = run_claude_prompt(
+                    prompt, model=model, verbose=verbose, prompt_index=spec.index
+                )
+                total_duration += prompt_duration
+
+                if verbose:
+                    print(f"  Response length: {len(response_text)} chars")
+                    print(f"  Tools called: {[t.name for t in tools_called]}")
+
+                # Capture values for later prompts
+                if spec.expect.capture:
+                    new_captures = capture_values(response_text, spec.expect.capture)
+                    captured_values.update(new_captures)
+                    if verbose and new_captures:
+                        print(f"  Captured: {new_captures}")
+
+                # Run assertions
+                tool_assertions = run_tool_assertions(tools_called, spec.expect.tools)
+                text_assertions = run_text_assertions(response_text, spec.expect.text)
+
+                # Log assertion results
+                failed_tool_assertions = [a for a in tool_assertions if not a[1]]
+                failed_text_assertions = [a for a in text_assertions if not a[1]]
+
+                if failed_tool_assertions or failed_text_assertions:
+                    log_to_loki(
+                        f"Assertions failed for prompt {spec.index}",
+                        level="warning",
+                        labels={"prompt_index": str(spec.index)},
+                        extra={
+                            "event": "assertion_failure",
+                            "failed_tool_assertions": [
+                                {"desc": a[0], "detail": a[2]} for a in failed_tool_assertions
+                            ],
+                            "failed_text_assertions": [
+                                {"desc": a[0], "detail": a[2]} for a in failed_text_assertions
+                            ],
+                        },
+                    )
+
+                # Build result
+                result = PromptResult(
+                    spec=spec,
+                    response_text=response_text,
+                    tools_called=tools_called,
+                    exit_code=exit_code,
+                    tool_assertions=tool_assertions,
+                    text_assertions=text_assertions,
+                )
+
+                # Determine if passed (all assertions must pass)
+                all_tool_passed = all(a[1] for a in tool_assertions)
+                all_text_passed = all(a[1] for a in text_assertions)
+
+                # Run LLM judge
+                judge_result = run_llm_judge(result, model=judge_model, verbose=verbose)
+                result.quality = judge_result["quality"]
+                result.tool_accuracy = judge_result["tool_accuracy"]
+                result.reasoning = judge_result["reasoning"]
+                result.refinement_suggestion = judge_result["refinement_suggestion"]
+                result.expectation_suggestion = judge_result["expectation_suggestion"]
+
+                # Overall pass: assertions pass AND quality is not low
+                result.passed = all_tool_passed and all_text_passed and result.quality != "low"
+
+                # Update prompt span with results
+                if prompt_span:
+                    prompt_span.set_attribute("passed", result.passed)
+                    prompt_span.set_attribute("quality", result.quality)
+                    prompt_span.set_attribute("tool_accuracy", result.tool_accuracy)
+                    prompt_span.set_attribute("tools_called", ",".join(t.name for t in tools_called))
+
+                results.append(result)
+                print(f"  -> {'PASS' if result.passed else 'FAIL'} (quality: {result.quality})")
+
+        # Calculate summary stats
+        test_duration = time.time() - test_start_time
+        passed_count = sum(1 for r in results if r.passed)
+        quality_high = sum(1 for r in results if r.quality == "high")
+        quality_medium = sum(1 for r in results if r.quality == "medium")
+        quality_low = sum(1 for r in results if r.quality == "low")
+
+        # Update test span with summary
+        if test_span:
+            test_span.set_attribute("passed_count", passed_count)
+            test_span.set_attribute("failed_count", len(results) - passed_count)
+            test_span.set_attribute("pass_rate", passed_count / len(results) if results else 0)
+            test_span.set_attribute("quality_high", quality_high)
+            test_span.set_attribute("quality_medium", quality_medium)
+            test_span.set_attribute("quality_low", quality_low)
+            test_span.set_attribute("total_duration_seconds", test_duration)
+            test_span.set_attribute("claude_duration_seconds", total_duration)
+
+        # Log test completion
+        log_to_loki(
+            f"Skill test completed: {scenario_name} - {passed_count}/{len(results)} passed",
+            level="info" if passed_count == len(results) else "warning",
+            extra={
+                "event": "test_complete",
+                "scenario": scenario_name,
+                "passed_count": passed_count,
+                "failed_count": len(results) - passed_count,
+                "pass_rate": passed_count / len(results) if results else 0,
+                "quality_high": quality_high,
+                "quality_medium": quality_medium,
+                "quality_low": quality_low,
+                "total_duration_seconds": test_duration,
+                "claude_duration_seconds": total_duration,
+            },
         )
-
-        if verbose:
-            print(f"  Response length: {len(response_text)} chars")
-            print(f"  Tools called: {[t.name for t in tools_called]}")
-
-        # Capture values for later prompts
-        if spec.expect.capture:
-            new_captures = capture_values(response_text, spec.expect.capture)
-            captured_values.update(new_captures)
-            if verbose and new_captures:
-                print(f"  Captured: {new_captures}")
-
-        # Run assertions
-        tool_assertions = run_tool_assertions(tools_called, spec.expect.tools)
-        text_assertions = run_text_assertions(response_text, spec.expect.text)
-
-        # Build result
-        result = PromptResult(
-            spec=spec,
-            response_text=response_text,
-            tools_called=tools_called,
-            exit_code=exit_code,
-            tool_assertions=tool_assertions,
-            text_assertions=text_assertions,
-        )
-
-        # Determine if passed (all assertions must pass)
-        all_tool_passed = all(a[1] for a in tool_assertions)
-        all_text_passed = all(a[1] for a in text_assertions)
-
-        # Run LLM judge
-        judge_result = run_llm_judge(result, model=judge_model, verbose=verbose)
-        result.quality = judge_result["quality"]
-        result.tool_accuracy = judge_result["tool_accuracy"]
-        result.reasoning = judge_result["reasoning"]
-        result.refinement_suggestion = judge_result["refinement_suggestion"]
-        result.expectation_suggestion = judge_result["expectation_suggestion"]
-
-        # Overall pass: assertions pass AND quality is not low
-        result.passed = all_tool_passed and all_text_passed and result.quality != "low"
-
-        results.append(result)
-        print(f"  -> {'PASS' if result.passed else 'FAIL'} (quality: {result.quality})")
 
     return results
 
@@ -830,7 +1269,13 @@ Examples:
     python skill-test.py scenarios/search.prompts --model opus --judge-model sonnet
     python skill-test.py scenarios/search.prompts --verbose --json
     python skill-test.py scenarios/search.prompts --prompt-index 0  # Single prompt
-    python skill-test.py scenarios/search.prompts --fix-context /path/to/skills  # Fix context output
+    python skill-test.py scenarios/search.prompts --fix-context /path/to/skills
+    python skill-test.py scenarios/search.prompts --no-debug  # Disable telemetry
+
+Telemetry (enabled by default):
+    - Traces: Sent to Tempo via OTLP (http://localhost:4318 or OTEL_EXPORTER_OTLP_ENDPOINT)
+    - Logs: Sent to Loki (http://localhost:3100 or LOKI_ENDPOINT)
+    - Spans: skill_test.run, skill_test.prompt, claude.prompt, llm.judge
         """,
     )
     parser.add_argument("prompts_file", type=Path, help="Path to .prompts file with expectations")
@@ -841,11 +1286,22 @@ Examples:
     parser.add_argument("--prompt-index", type=int, help="Run only a specific prompt by index (0-based)")
     parser.add_argument("--fix-context", type=str, metavar="SKILLS_PATH",
                         help="Output fix context JSON for first failure (requires path to Jira-Assistant-Skills)")
+    parser.add_argument("--no-debug", action="store_true",
+                        help="Disable telemetry (traces and logs) - telemetry is ON by default")
     args = parser.parse_args()
 
     if not args.prompts_file.exists():
         print(f"Error: File not found: {args.prompts_file}")
         sys.exit(1)
+
+    scenario_name = args.prompts_file.stem
+
+    # Initialize telemetry (enabled by default)
+    init_telemetry(
+        service_name="skill-test",
+        scenario=scenario_name,
+        debug=not args.no_debug,
+    )
 
     results = run_skill_test(
         prompts_file=args.prompts_file,
@@ -858,8 +1314,6 @@ Examples:
 
     if not results:
         sys.exit(1)
-
-    scenario_name = args.prompts_file.stem
 
     # Output fix context for first failure if requested
     if args.fix_context:
@@ -877,6 +1331,9 @@ Examples:
         print(json.dumps(report, indent=2))
     else:
         print_report(results, scenario_name)
+
+    # Shutdown telemetry (flushes pending spans)
+    shutdown_telemetry()
 
     # Exit with failure if any tests failed
     if not all(r.passed for r in results):
