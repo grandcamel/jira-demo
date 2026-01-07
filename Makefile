@@ -1,6 +1,6 @@
 .PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
-	logs-errors-local traces-errors-local run-scenario
+	logs-errors-local traces-errors-local run-scenario test-skill
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -203,6 +203,25 @@ logs-errors-local:
 traces-errors-local:
 	@curl -s "http://localhost:3200/api/search?q={status=error}&limit=20" | jq 2>/dev/null || echo "Tempo not available"
 
+# Skill Testing
+# Usage: make test-skill SCENARIO=search
+#        make test-skill SCENARIO=search MODEL=opus JUDGE_MODEL=sonnet
+#        make test-skill SCENARIO=search VERBOSE=1
+test-skill:
+	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill SCENARIO=<name> [MODEL=sonnet] [JUDGE_MODEL=haiku] [VERBOSE=1]"; exit 1; fi
+	docker run --rm \
+		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
+		-e JIRA_EMAIL=$(JIRA_EMAIL) \
+		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
+		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		jira-demo-container:latest \
+		python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
+			--model $(or $(MODEL),sonnet) \
+			--judge-model $(or $(JUDGE_MODEL),haiku) \
+			$(if $(VERBOSE),--verbose,) \
+			$(if $(JSON),--json,)
+
 # Help
 help:
 	@echo "JIRA Demo Management Commands"
@@ -241,6 +260,8 @@ help:
 	@echo "Testing:"
 	@echo "  make run-scenario SCENARIO=issue      - Run scenario in debug mode (auto-advance)"
 	@echo "  make run-scenario SCENARIO=search DELAY=5 - Run with custom delay"
+	@echo "  make test-skill SCENARIO=search       - Run skill test with assertions"
+	@echo "  make test-skill SCENARIO=search MODEL=opus JUDGE_MODEL=sonnet - Custom models"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make check-token    - Check Claude OAuth token expiration"

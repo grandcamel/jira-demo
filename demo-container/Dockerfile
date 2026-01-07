@@ -32,12 +32,26 @@ RUN chown -R devuser:node /workspace/scenarios
 COPY autoplay.sh /workspace/autoplay.sh
 RUN chmod 755 /workspace/autoplay.sh && chown devuser:node /workspace/autoplay.sh
 
+# Copy skill test runner
+COPY skill-test.py /workspace/skill-test.py
+RUN chmod 755 /workspace/skill-test.py && chown devuser:node /workspace/skill-test.py
+
 # Create demo working directory
 RUN mkdir -p /workspace/demo && chown devuser:node /workspace/demo
 
 # Copy Claude settings (bypass permission prompts for demo)
 COPY settings.json /home/devuser/.claude/settings.json
-RUN chown devuser:node /home/devuser/.claude/settings.json
+RUN chown devuser:node /home/devuser/.claude/settings.json && \
+    mkdir -p /home/devuser/.claude/plugins/marketplaces /home/devuser/.claude/plugins/cache && \
+    chown -R devuser:node /home/devuser/.claude
+
+USER devuser
+
+# Pre-install JIRA Assistant Skills plugin (also installed at runtime for updates)
+RUN claude plugin marketplace add https://github.com/grandcamel/jira-assistant-skills.git#main || true && \
+    claude plugin install jira-assistant-skills@jira-assistant-skills --scope user || true
+
+USER root
 
 # Ensure cargo bin is in PATH for all shells
 RUN echo 'export PATH="/usr/local/cargo/bin:$PATH"' >> /home/devuser/.bashrc && \
