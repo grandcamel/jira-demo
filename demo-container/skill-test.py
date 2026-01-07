@@ -622,6 +622,105 @@ def generate_json_report(results: list[PromptResult], scenario_name: str) -> dic
     }
 
 
+def generate_fix_context(result: PromptResult, skills_path: str) -> dict:
+    """Generate fix context for the skill-fix agent."""
+    import subprocess
+
+    context = {
+        "failure": {
+            "prompt_index": result.spec.index,
+            "prompt_text": result.spec.prompt,
+            "response_text": result.response_text[:5000],  # Truncate for context
+            "tools_called": [t.name for t in result.tools_called],
+            "tool_assertions": [
+                {"desc": a[0], "passed": a[1], "detail": a[2]}
+                for a in result.tool_assertions
+            ],
+            "text_assertions": [
+                {"desc": a[0], "passed": a[1], "detail": a[2]}
+                for a in result.text_assertions
+            ],
+            "quality": result.quality,
+            "tool_accuracy": result.tool_accuracy,
+            "reasoning": result.reasoning,
+            "refinement_suggestion": result.refinement_suggestion,
+            "expectation_suggestion": result.expectation_suggestion,
+        },
+        "relevant_files": {},
+        "git_history": [],
+    }
+
+    # Find relevant skill files based on the prompt
+    # Try both possible locations for the plugin
+    plugin_path = Path(skills_path) / "plugins" / "jira-assistant-skills"
+    if not plugin_path.exists():
+        plugin_path = Path(skills_path) / "jira-assistant-skills"
+    skills_dir = plugin_path / "skills"
+
+    if skills_dir.exists():
+        # Look for skill files that might be relevant
+        # For JIRA queries, likely jira-search or jira-assistant
+        relevant_skills = []
+        prompt_lower = result.spec.prompt.lower()
+
+        skill_keywords = {
+            "jira-search.md": ["search", "find", "query", "jql", "issues"],
+            "jira-issue.md": ["create", "update", "issue", "bug", "story", "task"],
+            "jira-assistant.md": ["jira", "assistant"],
+            "jira-agile.md": ["sprint", "epic", "backlog", "story points"],
+            "jira-lifecycle.md": ["transition", "status", "workflow"],
+        }
+
+        for skill_file, keywords in skill_keywords.items():
+            if any(kw in prompt_lower for kw in keywords):
+                skill_path = skills_dir / skill_file
+                if skill_path.exists():
+                    relevant_skills.append(skill_file)
+
+        # Read relevant skill files
+        for skill_file in relevant_skills[:3]:  # Limit to 3 most relevant
+            skill_path = skills_dir / skill_file
+            try:
+                content = skill_path.read_text()
+                context["relevant_files"][f"skills/{skill_file}"] = content[:10000]
+            except Exception:
+                pass
+
+    # Get recent git history for the skills repo
+    try:
+        git_log = subprocess.run(
+            ["git", "log", "--oneline", "-10", "--", "jira-assistant-skills/skills/"],
+            cwd=skills_path,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if git_log.returncode == 0:
+            for line in git_log.stdout.strip().split("\n")[:5]:
+                if line:
+                    parts = line.split(" ", 1)
+                    context["git_history"].append({
+                        "commit": parts[0],
+                        "message": parts[1] if len(parts) > 1 else "",
+                    })
+    except Exception:
+        pass
+
+    # Check if library code might be relevant (API errors, etc.)
+    if "error" in result.response_text.lower() or result.quality == "low":
+        lib_path = Path(skills_path) / "jira-assistant-skills-lib" / "src" / "jira_assistant_skills_lib"
+        if lib_path.exists():
+            # Add search.py if relevant to search failures
+            search_path = lib_path / "search.py"
+            if search_path.exists() and "search" in prompt_lower:
+                try:
+                    context["relevant_files"]["lib/search.py"] = search_path.read_text()[:8000]
+                except Exception:
+                    pass
+
+    return context
+
+
 # =============================================================================
 # Main Runner
 # =============================================================================
@@ -633,6 +732,7 @@ def run_skill_test(
     judge_model: str = "haiku",
     verbose: bool = False,
     json_output: bool = False,
+    prompt_index: int | None = None,
 ) -> list[PromptResult]:
     """Run skill test for a scenario."""
 
@@ -642,7 +742,16 @@ def run_skill_test(
         print(f"Error: No prompts found in {prompts_file}")
         return []
 
-    print(f"Running {len(specs)} prompts from {prompts_file.name}")
+    # Filter to single prompt if specified
+    if prompt_index is not None:
+        if prompt_index < 0 or prompt_index >= len(specs):
+            print(f"Error: prompt_index {prompt_index} out of range (0-{len(specs)-1})")
+            return []
+        specs = [specs[prompt_index]]
+        print(f"Running prompt {prompt_index} from {prompts_file.name}")
+    else:
+        print(f"Running {len(specs)} prompts from {prompts_file.name}")
+
     print(f"Model: {model}, Judge: {judge_model}")
     print()
 
@@ -719,6 +828,8 @@ Examples:
     python skill-test.py scenarios/search.prompts
     python skill-test.py scenarios/search.prompts --model opus --judge-model sonnet
     python skill-test.py scenarios/search.prompts --verbose --json
+    python skill-test.py scenarios/search.prompts --prompt-index 0  # Single prompt
+    python skill-test.py scenarios/search.prompts --fix-context /path/to/skills  # Fix context output
         """,
     )
     parser.add_argument("prompts_file", type=Path, help="Path to .prompts file with expectations")
@@ -726,6 +837,9 @@ Examples:
     parser.add_argument("--judge-model", default="haiku", help="Model for LLM judge (default: haiku)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--json", action="store_true", help="Output JSON report")
+    parser.add_argument("--prompt-index", type=int, help="Run only a specific prompt by index (0-based)")
+    parser.add_argument("--fix-context", type=str, metavar="SKILLS_PATH",
+                        help="Output fix context JSON for first failure (requires path to Jira-Assistant-Skills)")
     args = parser.parse_args()
 
     if not args.prompts_file.exists():
@@ -738,12 +852,24 @@ Examples:
         judge_model=args.judge_model,
         verbose=args.verbose,
         json_output=args.json,
+        prompt_index=args.prompt_index,
     )
 
     if not results:
         sys.exit(1)
 
     scenario_name = args.prompts_file.stem
+
+    # Output fix context for first failure if requested
+    if args.fix_context:
+        failed_results = [r for r in results if not r.passed]
+        if failed_results:
+            fix_ctx = generate_fix_context(failed_results[0], args.fix_context)
+            print(json.dumps(fix_ctx, indent=2))
+            sys.exit(1)
+        else:
+            print(json.dumps({"status": "all_passed", "message": "No failures to fix"}))
+            sys.exit(0)
 
     if args.json:
         report = generate_json_report(results, scenario_name)
