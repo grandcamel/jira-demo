@@ -155,11 +155,8 @@ def find_user_by_name(client: Any, display_name: str) -> str | None:
     """Find a user's account ID by display name."""
     try:
         # Search for users by display name
-        response = client._request(
-            "GET",
-            f"/rest/api/3/user/search?query={display_name}",
-        )
-        for user in response:
+        users = client.search_users(display_name)
+        for user in users:
             if user.get("displayName") == display_name:
                 account_id = user.get("accountId")
                 add_span_attribute("user.account_id", account_id)
@@ -213,9 +210,8 @@ def create_demo_issues(client: Any, dry_run: bool = False, jane_account_id: str 
             if issue_data.get("assign_to_jane") and jane_account_id:
                 fields["assignee"] = {"accountId": jane_account_id}
 
-            # Set reporter if specified and Jane's account ID is available
-            if issue_data.get("reporter_is_jane") and jane_account_id:
-                fields["reporter"] = {"accountId": jane_account_id}
+            # Note: reporter field often can't be set on creation (screen config)
+            # Skipping reporter_is_jane for now
 
             # Create issue
             result = client.create_issue(fields)
@@ -248,10 +244,9 @@ def create_demo_issues(client: Any, dry_run: bool = False, jane_account_id: str 
 def get_service_desk_id(client: Any, project_key: str) -> str | None:
     """Get the service desk ID for a project."""
     try:
-        response = client._request("GET", "/rest/servicedeskapi/servicedesk")
-        for sd in response.get("values", []):
-            if sd.get("projectKey") == project_key:
-                return sd.get("id")
+        sd = client.lookup_service_desk_by_project_key(project_key)
+        if sd:
+            return sd.get("id")
         return None
     except Exception as e:
         print(f"  Warning: Could not get service desk ID: {e}")
@@ -262,9 +257,7 @@ def get_service_desk_id(client: Any, project_key: str) -> str | None:
 def get_request_types(client: Any, service_desk_id: str) -> dict[str, int]:
     """Get request types for a service desk, returning name -> ID mapping."""
     try:
-        response = client._request(
-            "GET", f"/rest/servicedeskapi/servicedesk/{service_desk_id}/requesttype"
-        )
+        response = client.get_request_types(service_desk_id)
         return {rt.get("name"): rt.get("id") for rt in response.get("values", [])}
     except Exception as e:
         print(f"  Warning: Could not get request types: {e}")
@@ -308,16 +301,13 @@ def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
         # Try JSM API first if we have service desk info
         if service_desk_id and request_type_name in request_types:
             try:
-                request_type_id = request_types[request_type_name]
-                payload = {
-                    "serviceDeskId": service_desk_id,
-                    "requestTypeId": request_type_id,
-                    "requestFieldValues": {
-                        "summary": summary,
-                        "description": request_data.get("description", ""),
-                    },
-                }
-                result = client._request("POST", "/rest/servicedeskapi/request", json=payload)
+                request_type_id = str(request_types[request_type_name])
+                result = client.create_request(
+                    service_desk_id=service_desk_id,
+                    request_type_id=request_type_id,
+                    summary=summary,
+                    description=request_data.get("description", ""),
+                )
                 issue_key = result.get("issueKey")
                 created_keys.append(issue_key)
                 print(f"  Created: {issue_key} - {summary} (via JSM API, type: {request_type_name})")
