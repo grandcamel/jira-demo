@@ -49,6 +49,8 @@ nginx --> queue-manager --> ttyd --> demo-container
 | Create invite | `make invite-local` |
 | Reset sandbox | `make reset-sandbox` |
 | Run scenario | `make run-scenario SCENARIO=search` |
+| Test skills | `make test-skill-dev SCENARIO=search` |
+| Refine skills | `make refine-skill SCENARIO=search` |
 | Shell access | `make shell-queue` / `make shell-demo` |
 
 ## Git (Quick Reference)
@@ -83,4 +85,5 @@ Detailed documentation in `docs/CLAUDE-L2.md`:
 | Production Deployment | SSH, deploy workflow, DNS, SSL |
 | Docker Compose | Ports, file layering |
 | Autoplay Scenarios | Available scenarios, debug mode |
+| Skill Testing | Test framework, refinement loop, fix agent |
 | Claude Code Plugins | Plugin installation and development |

@@ -58,6 +58,9 @@ make invite-revoke TOKEN=abc123      # Revoke invite
 ```bash
 make run-scenario SCENARIO=issue           # Run scenario (3s delay)
 make run-scenario SCENARIO=search DELAY=5  # Custom delay
+make test-skill SCENARIO=search            # Run skill test with assertions
+make test-skill-dev SCENARIO=search        # Fast test with local source mounts
+make refine-skill SCENARIO=search          # Iterative test+fix loop
 make shell-queue      # Shell into queue manager
 make shell-demo       # Run demo container interactively
 ```
@@ -304,6 +307,65 @@ make run-scenario SCENARIO=search DELAY=5  # Custom delay
 - Debug log file: `/tmp/autoplay-debug.log`
 - OTEL log shipping to Loki
 - Claude `--debug` flag
+
+---
+
+## Skill Testing
+
+Test JIRA Assistant Skills with assertions and automated refinement.
+
+### Commands
+
+```bash
+# Run skill test (uses container image)
+make test-skill SCENARIO=search
+
+# Fast iteration with local source mounts (no rebuild)
+make test-skill-dev SCENARIO=search
+make test-skill-dev SCENARIO=search PROMPT_INDEX=0    # Single prompt
+make test-skill-dev SCENARIO=search FIX_CONTEXT=1     # Output fix context JSON
+
+# Automated refinement loop (test → fix → retest)
+make refine-skill SCENARIO=search MAX_ATTEMPTS=3
+```
+
+### Prompt File Format
+
+Scenario prompts in `demo-container/scenarios/*.prompts` with YAML expectations:
+
+```yaml
+---
+expectations:
+  - prompt: "Find issues assigned to me"
+    must_call: [Skill]
+    must_contain: ["DEMO-"]
+    quality: medium
+---
+```
+
+### Assertion Types
+
+| Type | Description |
+|------|-------------|
+| `must_call` | Tools that must be invoked |
+| `must_not_call` | Tools that must not be invoked |
+| `must_contain` | Text patterns in response |
+| `must_not_contain` | Text patterns to avoid |
+| `quality` | Expected LLM judge rating (low/medium/high) |
+
+### Fix Agent
+
+The `skill-fix` agent (`.claude/agents/skill-fix.md`) makes targeted fixes:
+- Skill description issues → Update trigger phrases
+- Skill content issues → Improve examples/instructions
+- Library issues → Fix Python library code
+
+### Environment
+
+Set `JIRA_SKILLS_PATH` to override default skills location:
+```bash
+JIRA_SKILLS_PATH=/path/to/Jira-Assistant-Skills make test-skill-dev SCENARIO=search
+```
 
 ---
 
