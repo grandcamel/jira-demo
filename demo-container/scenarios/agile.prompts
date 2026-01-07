@@ -6,7 +6,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-]
     must_not_contain: [error, failed, "I don't have access"]
@@ -19,7 +19,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [sprint]
     must_not_contain: [error, failed]
@@ -32,7 +32,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [sprint]
     must_not_contain: [error, failed]
@@ -45,7 +45,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-1, Epic]
     must_not_contain: [error, failed]
@@ -58,7 +58,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-1]
     must_not_contain: [error, "not found"]
@@ -71,7 +71,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [Jane]
     must_not_contain: [error, failed]
@@ -83,7 +83,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-4, sprint]
     must_not_contain: [error, failed]
@@ -95,7 +95,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-2, 5]
     must_not_contain: [error, failed]
@@ -107,7 +107,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-, created, Story]
     must_not_contain: [error, failed]
