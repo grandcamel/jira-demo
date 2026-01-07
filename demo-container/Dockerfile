@@ -8,10 +8,8 @@ USER root
 # Note: jira-assistant-skills CLI is installed at runtime in entrypoint.sh
 # to pick up latest updates without rebuilding the image
 
-# Install glow for terminal markdown rendering and expect for auto-play
-RUN apt-get update && apt-get install -y --no-install-recommends expect && \
-    rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL -o /tmp/glow.tar.gz \
+# Install glow for terminal markdown rendering
+RUN curl -fsSL -o /tmp/glow.tar.gz \
     https://github.com/charmbracelet/glow/releases/download/v2.0.0/glow_2.0.0_Linux_x86_64.tar.gz && \
     tar -xzf /tmp/glow.tar.gz -C /tmp && \
     mv /tmp/glow_2.0.0_Linux_x86_64/glow /usr/local/bin/glow && \
