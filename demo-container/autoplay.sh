@@ -9,6 +9,7 @@
 #   ./autoplay.sh <scenario>                    # Press-key to advance
 #   ./autoplay.sh --auto-advance <scenario>     # Auto-advance with 3s delay
 #   ./autoplay.sh --auto-advance --delay 5 <scenario>  # Custom delay
+#   ./autoplay.sh --show-tools <scenario>       # Show tool usage sub-boxes
 # =============================================================================
 
 set -euo pipefail
@@ -22,6 +23,10 @@ PACING_MODE="keypress"  # or "auto"
 AUTO_DELAY=3            # seconds between prompts in auto mode
 SCENARIO=""
 MAX_RESULT_LINES=10     # truncate tool results to this many lines
+SHOW_TOOLS="${AUTOPLAY_SHOW_TOOLS:-false}"   # show tool use sub-boxes (env or --show-tools)
+DEBUG_MODE="${AUTOPLAY_DEBUG:-false}"        # debug mode (env or --debug)
+DEBUG_LOG="/tmp/autoplay-debug.log"
+OTEL_ENDPOINT="${OTEL_ENDPOINT:-}"           # OTEL/Loki endpoint for log shipping
 
 # =============================================================================
 # Colors and Styling
@@ -78,6 +83,103 @@ declare -a DESCRIPTIONS=()
 declare -a PROMPTS=()
 PAUSED=false
 TERMINAL_WIDTH=80
+
+# =============================================================================
+# Debug Functions
+# =============================================================================
+
+# Buffer for OTEL logs (newline-separated JSON)
+OTEL_LOG_BUFFER=""
+
+debug_log() {
+    if [[ "$DEBUG_MODE" == true ]]; then
+        local timestamp
+        timestamp=$(date '+%H:%M:%S')
+        local msg="[$timestamp] $*"
+        echo "$msg" >> "$DEBUG_LOG"
+
+        # Also buffer for OTEL if endpoint configured
+        if [[ -n "$OTEL_ENDPOINT" ]]; then
+            local ns_timestamp
+            ns_timestamp=$(date +%s%N)
+            # Escape the message for JSON
+            local escaped_msg
+            escaped_msg=$(echo "$*" | jq -Rs '.')
+            OTEL_LOG_BUFFER+="[\"${ns_timestamp}\",${escaped_msg}],"
+        fi
+    fi
+}
+
+debug_json() {
+    if [[ "$DEBUG_MODE" == true ]]; then
+        echo "---JSON---" >> "$DEBUG_LOG"
+        echo "$1" >> "$DEBUG_LOG"
+        echo "---END---" >> "$DEBUG_LOG"
+
+        # For OTEL, send compact version
+        if [[ -n "$OTEL_ENDPOINT" ]]; then
+            local ns_timestamp
+            ns_timestamp=$(date +%s%N)
+            # Get event type for the log
+            local event_type
+            event_type=$(echo "$1" | jq -r '.type // "unknown"' 2>/dev/null)
+            local compact
+            compact=$(echo "$1" | jq -c '.' 2>/dev/null || echo "$1")
+            local escaped
+            escaped=$(echo "JSON[$event_type]: $compact" | jq -Rs '.')
+            OTEL_LOG_BUFFER+="[\"${ns_timestamp}\",${escaped}],"
+        fi
+    fi
+}
+
+# Send buffered logs to Loki
+flush_otel_logs() {
+    if [[ -z "$OTEL_ENDPOINT" ]] || [[ -z "$OTEL_LOG_BUFFER" ]]; then
+        return 0
+    fi
+
+    # Remove trailing comma and wrap in array
+    local values="[${OTEL_LOG_BUFFER%,}]"
+
+    # Build Loki push payload
+    local payload
+    payload=$(cat <<EOF
+{
+  "streams": [{
+    "stream": {
+      "job": "autoplay",
+      "scenario": "${SCENARIO:-unknown}",
+      "source": "autoplay.sh"
+    },
+    "values": ${values}
+  }]
+}
+EOF
+)
+
+    # Send to Loki (fire and forget)
+    curl -s -X POST \
+        -H "Content-Type: application/json" \
+        "${OTEL_ENDPOINT}/loki/api/v1/push" \
+        -d "$payload" >/dev/null 2>&1 &
+
+    # Clear buffer
+    OTEL_LOG_BUFFER=""
+}
+
+init_debug() {
+    if [[ "$DEBUG_MODE" == true ]]; then
+        echo "========================================" > "$DEBUG_LOG"
+        echo "Autoplay Debug Log - $(date)" >> "$DEBUG_LOG"
+        echo "Scenario: $SCENARIO" >> "$DEBUG_LOG"
+        echo "OTEL Endpoint: ${OTEL_ENDPOINT:-none}" >> "$DEBUG_LOG"
+        echo "========================================" >> "$DEBUG_LOG"
+        echo -e "${C_YELLOW}Debug mode enabled. Log: ${DEBUG_LOG}${C_RESET}"
+        if [[ -n "$OTEL_ENDPOINT" ]]; then
+            echo -e "${C_YELLOW}OTEL logging: ${OTEL_ENDPOINT}${C_RESET}"
+        fi
+    fi
+}
 
 # =============================================================================
 # Utility Functions
@@ -262,15 +364,21 @@ process_stream() {
         # Check for valid JSON
         if ! echo "$line" | jq -e . >/dev/null 2>&1; then
             # Non-JSON line (stderr or other output)
+            debug_log "NON-JSON: $line"
             continue
         fi
 
         local event_type
         event_type=$(echo "$line" | jq -r '.type // empty')
 
+        # Debug: log every event
+        debug_log "EVENT: $event_type"
+        debug_json "$line"
+
         case "$event_type" in
             system)
                 # Initialization event - skip
+                debug_log "  -> system event (skipped)"
                 ;;
 
             assistant)
@@ -330,80 +438,87 @@ process_stream() {
                 local tool_name tool_input
                 tool_name=$(echo "$line" | jq -r '.name // empty')
                 current_tool_name="$tool_name"
+                debug_log "  -> tool_use: $tool_name"
 
-                draw_box_empty "$C_CLAUDE_BORDER"
-                draw_tool_box_top "TOOL: $tool_name"
+                # Only display tool boxes if --show-tools is enabled
+                if [[ "$SHOW_TOOLS" == true ]]; then
+                    draw_box_empty "$C_CLAUDE_BORDER"
+                    draw_tool_box_top "TOOL: $tool_name"
 
-                # Format input based on tool type
-                case "$tool_name" in
-                    Bash)
-                        local cmd
-                        cmd=$(echo "$line" | jq -r '.input.command // empty')
-                        draw_tool_box_line "${C_TOOL_INPUT}\$ ${cmd}${C_RESET}"
-                        ;;
-                    Read)
-                        local path
-                        path=$(echo "$line" | jq -r '.input.file_path // empty')
-                        draw_tool_box_line "${C_TOOL_INPUT}file: ${path}${C_RESET}"
-                        ;;
-                    Edit)
-                        local path
-                        path=$(echo "$line" | jq -r '.input.file_path // empty')
-                        draw_tool_box_line "${C_TOOL_INPUT}editing: ${path}${C_RESET}"
-                        ;;
-                    Write)
-                        local path
-                        path=$(echo "$line" | jq -r '.input.file_path // empty')
-                        draw_tool_box_line "${C_TOOL_INPUT}writing: ${path}${C_RESET}"
-                        ;;
-                    Grep)
-                        local pattern path
-                        pattern=$(echo "$line" | jq -r '.input.pattern // empty')
-                        path=$(echo "$line" | jq -r '.input.path // "."')
-                        draw_tool_box_line "${C_TOOL_INPUT}/${pattern}/ in ${path}${C_RESET}"
-                        ;;
-                    Glob)
-                        local pattern
-                        pattern=$(echo "$line" | jq -r '.input.pattern // empty')
-                        draw_tool_box_line "${C_TOOL_INPUT}pattern: ${pattern}${C_RESET}"
-                        ;;
-                    *)
-                        # Generic display for other tools (including MCP tools)
-                        local input_keys
-                        input_keys=$(echo "$line" | jq -r '.input | keys | join(", ")' 2>/dev/null || echo "")
-                        if [[ -n "$input_keys" ]]; then
-                            draw_tool_box_line "${C_TOOL_INPUT}${input_keys}${C_RESET}"
-                        fi
-                        ;;
-                esac
+                    # Format input based on tool type
+                    case "$tool_name" in
+                        Bash)
+                            local cmd
+                            cmd=$(echo "$line" | jq -r '.input.command // empty')
+                            draw_tool_box_line "${C_TOOL_INPUT}\$ ${cmd}${C_RESET}"
+                            ;;
+                        Read)
+                            local path
+                            path=$(echo "$line" | jq -r '.input.file_path // empty')
+                            draw_tool_box_line "${C_TOOL_INPUT}file: ${path}${C_RESET}"
+                            ;;
+                        Edit)
+                            local path
+                            path=$(echo "$line" | jq -r '.input.file_path // empty')
+                            draw_tool_box_line "${C_TOOL_INPUT}editing: ${path}${C_RESET}"
+                            ;;
+                        Write)
+                            local path
+                            path=$(echo "$line" | jq -r '.input.file_path // empty')
+                            draw_tool_box_line "${C_TOOL_INPUT}writing: ${path}${C_RESET}"
+                            ;;
+                        Grep)
+                            local pattern path
+                            pattern=$(echo "$line" | jq -r '.input.pattern // empty')
+                            path=$(echo "$line" | jq -r '.input.path // "."')
+                            draw_tool_box_line "${C_TOOL_INPUT}/${pattern}/ in ${path}${C_RESET}"
+                            ;;
+                        Glob)
+                            local pattern
+                            pattern=$(echo "$line" | jq -r '.input.pattern // empty')
+                            draw_tool_box_line "${C_TOOL_INPUT}pattern: ${pattern}${C_RESET}"
+                            ;;
+                        *)
+                            # Generic display for other tools (including MCP tools)
+                            local input_keys
+                            input_keys=$(echo "$line" | jq -r '.input | keys | join(", ")' 2>/dev/null || echo "")
+                            if [[ -n "$input_keys" ]]; then
+                                draw_tool_box_line "${C_TOOL_INPUT}${input_keys}${C_RESET}"
+                            fi
+                            ;;
+                    esac
 
-                draw_tool_box_bottom
+                    draw_tool_box_bottom
+                fi
                 ;;
 
             tool_result)
-                local content
-                content=$(echo "$line" | jq -r '.content // empty')
+                # Only display tool results if --show-tools is enabled
+                if [[ "$SHOW_TOOLS" == true ]]; then
+                    local content
+                    content=$(echo "$line" | jq -r '.content // empty')
 
-                if [[ -n "$content" ]]; then
-                    draw_box_empty "$C_CLAUDE_BORDER"
-                    draw_tool_box_top "RESULT"
+                    if [[ -n "$content" ]]; then
+                        draw_box_empty "$C_CLAUDE_BORDER"
+                        draw_tool_box_top "RESULT"
 
-                    # Count lines and truncate if needed
-                    local line_count
-                    line_count=$(echo "$content" | wc -l)
+                        # Count lines and truncate if needed
+                        local line_count
+                        line_count=$(echo "$content" | wc -l)
 
-                    if [[ $line_count -gt $MAX_RESULT_LINES ]]; then
-                        echo "$content" | head -n "$MAX_RESULT_LINES" | while IFS= read -r result_line; do
-                            draw_tool_box_line "${C_TOOL_OUTPUT}${result_line}${C_RESET}"
-                        done
-                        draw_tool_box_line "${C_DIM}... (${line_count} total lines)${C_RESET}"
-                    else
-                        echo "$content" | while IFS= read -r result_line; do
-                            draw_tool_box_line "${C_TOOL_OUTPUT}${result_line}${C_RESET}"
-                        done
+                        if [[ $line_count -gt $MAX_RESULT_LINES ]]; then
+                            echo "$content" | head -n "$MAX_RESULT_LINES" | while IFS= read -r result_line; do
+                                draw_tool_box_line "${C_TOOL_OUTPUT}${result_line}${C_RESET}"
+                            done
+                            draw_tool_box_line "${C_DIM}... (${line_count} total lines)${C_RESET}"
+                        else
+                            echo "$content" | while IFS= read -r result_line; do
+                                draw_tool_box_line "${C_TOOL_OUTPUT}${result_line}${C_RESET}"
+                            done
+                        fi
+
+                        draw_tool_box_bottom
                     fi
-
-                    draw_tool_box_bottom
                 fi
                 ;;
 
@@ -537,27 +652,58 @@ run_claude_prompt() {
     local output
     local exit_code
 
+    debug_log "========================================"
+    debug_log "PROMPT: $prompt"
+    debug_log "========================================"
+
     # Start Claude Code style spinner
     start_spinner
 
+    # Build claude command with optional debug flag
+    local claude_cmd="claude -p --output-format stream-json --verbose --dangerously-skip-permissions"
+    if [[ "$DEBUG_MODE" == true ]]; then
+        claude_cmd="claude -p --output-format stream-json --verbose --debug --dangerously-skip-permissions"
+    fi
+
     # Run Claude with streaming and capture output
-    output=$(claude -p --output-format stream-json --verbose \
-           --dangerously-skip-permissions \
-           "$prompt" 2>&1)
+    # Capture stderr separately for debug logs
+    local stderr_file="/tmp/claude-stderr-$$.log"
+    output=$($claude_cmd "$prompt" 2>"$stderr_file")
     exit_code=$?
 
     # Stop spinner
     stop_spinner
 
+    # Process Claude's debug output if in debug mode
+    if [[ "$DEBUG_MODE" == true ]] && [[ -f "$stderr_file" ]]; then
+        local stderr_content
+        stderr_content=$(cat "$stderr_file")
+        if [[ -n "$stderr_content" ]]; then
+            debug_log "=== Claude Debug Output ==="
+            while IFS= read -r line; do
+                debug_log "CLAUDE_DEBUG: $line"
+            done <<< "$stderr_content"
+            debug_log "=== End Claude Debug ==="
+        fi
+        rm -f "$stderr_file"
+    fi
+
+    debug_log "Claude exit code: $exit_code"
+    debug_log "Output length: ${#output} chars"
+
     # Check if we got any output
     if [[ -z "$output" ]]; then
         echo -e "${C_RED}  [No output from Claude - exit code: $exit_code]${C_RESET}"
+        debug_log "ERROR: No output from Claude"
         return 1
     fi
 
     # Process the output
     echo "$output" | process_stream
     local process_exit=${PIPESTATUS[1]}
+
+    # Flush logs after each prompt
+    flush_otel_logs
 
     # Return error if either Claude or processing failed
     if [[ $exit_code -ne 0 ]]; then
@@ -658,6 +804,7 @@ pause_handler() {
 
 cleanup_on_exit() {
     stop_spinner
+    flush_otel_logs  # Send any remaining buffered logs
 }
 
 trap pause_handler SIGINT
@@ -675,12 +822,16 @@ show_usage() {
     echo "Options:"
     echo "  --auto-advance, -a    Auto-advance instead of waiting for keypress"
     echo "  --delay, -d <secs>    Delay between prompts in auto mode (default: 3)"
+    echo "  --show-tools, -t      Show tool usage sub-boxes (off by default)"
+    echo "  --debug               Log raw JSON to /tmp/autoplay-debug.log"
     echo "  --help, -h            Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 issue                    # Run issue scenario, press key to advance"
     echo "  $0 --auto-advance search    # Auto-advance with 3s delay"
     echo "  $0 -a -d 5 agile            # Auto-advance with 5s delay"
+    echo "  $0 -t issue                 # Show tool usage details"
+    echo "  $0 --debug issue            # Debug mode with JSON logging"
 }
 
 parse_arguments() {
@@ -693,6 +844,14 @@ parse_arguments() {
             --delay|-d)
                 AUTO_DELAY="$2"
                 shift 2
+                ;;
+            --show-tools|-t)
+                SHOW_TOOLS=true
+                shift
+                ;;
+            --debug)
+                DEBUG_MODE=true
+                shift
                 ;;
             --help|-h)
                 show_usage
@@ -724,6 +883,9 @@ parse_arguments() {
 run_scenario() {
     local prompts_file="${SCENARIOS_DIR}/${SCENARIO}.prompts"
 
+    # Initialize debug logging if enabled
+    init_debug
+
     if [[ ! -f "$prompts_file" ]]; then
         display_error "Scenario file not found: $prompts_file"
         exit 1
@@ -744,6 +906,9 @@ run_scenario() {
     echo -e "${C_CYAN}Mode: ${PACING_MODE}${C_RESET}"
     if [[ "$PACING_MODE" == "auto" ]]; then
         echo -e "${C_CYAN}Delay: ${AUTO_DELAY}s${C_RESET}"
+    fi
+    if [[ "$SHOW_TOOLS" == true ]]; then
+        echo -e "${C_CYAN}Tools: enabled${C_RESET}"
     fi
     echo ""
     echo -e "${C_DIM}Press Ctrl+C to pause, Ctrl+C twice to exit${C_RESET}"
@@ -783,6 +948,12 @@ run_scenario() {
     done
 
     display_completion
+
+    # Wait before returning to menu so user can see final response
+    echo ""
+    echo -en "${C_DIM}[Press any key to return to menu...]${C_RESET}"
+    read -rsn1
+    echo ""
 }
 
 # =============================================================================

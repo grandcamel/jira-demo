@@ -27,6 +27,9 @@ services:
       - CLAUDE_CONFIG_PATH=${PWD}/secrets/.claude.json
       - OTEL_LOG_LEVEL=debug
       - ENABLE_AUTOPLAY=true
+      - AUTOPLAY_DEBUG=true
+      - AUTOPLAY_SHOW_TOOLS=true
+      - OTEL_ENDPOINT=http://host.docker.internal:3100
     command: ["node", "--watch", "--require", "./instrumentation.js", "server.js"]
 
   redis:
@@ -40,6 +43,7 @@ services:
       - GF_LOG_LEVEL=debug
     ports:
       - "3001:3000"   # Grafana UI for direct access in dev
+      - "3100:3100"   # Loki push API for autoplay debug logs
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
 
