@@ -1,27 +1,113 @@
-# description: View service desk queues
-Show me the service desk queues for DEMOSD
+# JSM Scenario - Tests jira-jsm skill
+# JIRA Service Management operations
 ---
-# description: View open requests
-What are the open requests in DEMOSD?
+prompt: |
+  Show me the service desk queues for DEMOSD
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMOSD]
+    must_not_contain: [error, failed, "I don't have access"]
+  semantic: |
+    Response should list available queues in the service desk project.
 ---
-# description: Get details of a service request
-Show me the details of DEMOSD-1
+prompt: |
+  What are the open requests in DEMOSD?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMOSD-]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list open service requests with their keys and summaries.
 ---
-# description: Add an internal comment (not visible to customer)
-Add an internal comment to DEMOSD-1: Investigating this issue - checking server logs
+prompt: |
+  Show me the details of DEMOSD-1
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMOSD-1]
+    must_not_contain: [error, "not found"]
+  semantic: |
+    Response should show details of the service request including
+    status, reporter, and description.
 ---
-# description: Add a customer-visible comment
-Add a comment to DEMOSD-1 visible to the customer: We're looking into this and will update you shortly
+prompt: |
+  Add an internal comment to DEMOSD-1: Investigating this issue - checking server logs
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [comment, internal]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm an internal comment was added
+    that is not visible to the customer.
 ---
-# description: Check SLA status
-What's the SLA status for DEMOSD-1?
+prompt: |
+  Add a comment to DEMOSD-1 visible to the customer: We're looking into this and will update you shortly
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [comment]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm a customer-visible comment was added.
 ---
-# description: Assign request to Jane Manager
-Assign DEMOSD-1 to Jane Manager
+prompt: |
+  What's the SLA status for DEMOSD-1?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [SLA]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show SLA status including time remaining or breach status.
 ---
-# description: Check Jane's service desk workload
-What requests are assigned to Jane?
+prompt: |
+  Assign DEMOSD-1 to Jane Manager
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [assigned, Jane]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the request was assigned to Jane Manager.
 ---
-# description: Transition the request
-Move DEMOSD-1 to In Progress
+prompt: |
+  What requests are assigned to Jane?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list service requests assigned to Jane Manager.
+---
+prompt: |
+  Move DEMOSD-1 to In Progress
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [In Progress]
+    must_not_contain: [error, failed, "cannot transition"]
+  semantic: |
+    Response should confirm the request was transitioned to In Progress.
 ---

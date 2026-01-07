@@ -1,27 +1,111 @@
-# description: Create test issues for bulk operations
-Create 3 low priority tasks in DEMO: Cleanup task 1, Cleanup task 2, Cleanup task 3
+# Bulk Scenario - Tests jira-bulk skill
+# Bulk operations on multiple issues
 ---
-# description: Preview bulk transition without making changes (dry-run)
-Preview moving all issues with "Cleanup" in the summary to In Progress
+prompt: |
+  Create 3 low priority tasks in DEMO: Cleanup task 1, Cleanup task 2, Cleanup task 3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, created, Task]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm creation of 3 tasks with low priority.
 ---
-# description: Execute bulk transition to In Progress
-Move all issues containing "Cleanup" in DEMO to In Progress
+prompt: |
+  Preview moving all issues with "Cleanup" in the summary to In Progress
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [preview, Cleanup]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show what would happen without making changes (dry-run).
 ---
-# description: Bulk assign issues to another user
-Assign all my open tasks in DEMO to Jane Manager
+prompt: |
+  Move all issues containing "Cleanup" in DEMO to In Progress
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [In Progress]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm bulk transition of matching issues.
 ---
-# description: Preview bulk priority change
-Show me what would happen if I changed all low priority tasks in DEMO to medium
+prompt: |
+  Assign all my open tasks in DEMO to Jane Manager
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [assigned, Jane]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm bulk assignment to Jane Manager.
 ---
-# description: Execute bulk priority change
-Change all low priority tasks in DEMO to medium priority
+prompt: |
+  Show me what would happen if I changed all low priority tasks in DEMO to medium
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [preview, priority]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should preview the bulk priority change without executing.
 ---
-# description: Preview bulk delete (safety check)
-Preview deleting all issues in DEMO with "Cleanup" in the summary
+prompt: |
+  Change all low priority tasks in DEMO to medium priority
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [priority, Medium]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm bulk priority change was applied.
 ---
-# description: Execute bulk delete with confirmation
-Delete all issues in DEMO with "Cleanup" in the summary
+prompt: |
+  Preview deleting all issues in DEMO with "Cleanup" in the summary
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [preview, delete, Cleanup]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show which issues would be deleted (dry-run).
 ---
-# description: Bulk operation using JQL criteria
-Show me issues matching: project = DEMO AND status = 'To Do' AND type = Task
+prompt: |
+  Delete all issues in DEMO with "Cleanup" in the summary
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [deleted]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm bulk deletion of matching issues.
+---
+prompt: |
+  Show me issues matching: project = DEMO AND status = 'To Do' AND type = Task
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list issues matching the JQL criteria.
 ---

@@ -1,30 +1,129 @@
-# description: View all issues in the DEMO project
-Show me all issues in project DEMO
+# Issue Scenario - Tests jira-issue skill
+# CRUD operations for JIRA issues
 ---
-# description: Get details of the Product Launch epic (DEMO-1)
-What's the status of DEMO-1?
+prompt: |
+  Show me all issues in project DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-]
+    must_not_contain: [error, failed, "I don't have access"]
+  semantic: |
+    Response should list issues from DEMO project with issue keys,
+    summaries, and status information.
 ---
-# description: Create a new high priority bug
-Create a high priority bug in DEMO: Search results are not sorted correctly
+prompt: |
+  What's the status of DEMO-1?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-1]
+    must_not_contain: [error, "not found", failed]
+  semantic: |
+    Response should show details of DEMO-1 (Product Launch epic)
+    including status, summary, and other key fields.
 ---
-# description: View the bug we just created
-Show me the details of the bug we just created
+prompt: |
+  Create a high priority bug in DEMO: Search results are not sorted correctly
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, created, Bug]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm creation of a new bug with high priority.
+    Should return the new issue key (DEMO-XX).
 ---
-# description: Add a description to the bug
-Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
+prompt: |
+  Show me the details of the bug we just created
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, Bug, High]
+    must_not_contain: [error, "not found"]
+  semantic: |
+    Response should show details of the previously created bug
+    including its key, summary, priority, and status.
 ---
-# description: View issues assigned to Jane Manager
-Show me issues assigned to Jane
+prompt: |
+  Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [updated, description]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the description was added to the bug.
 ---
-# description: Assign the bug to Jane Manager
-Assign that bug to Jane Manager
+prompt: |
+  Show me issues assigned to Jane
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, Jane]
+    must_not_contain: [error, "couldn't find"]
+  semantic: |
+    Response should list issues assigned to Jane Manager,
+    including DEMO-3 and DEMO-4.
 ---
-# description: Add a comment to the bug
-Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
+prompt: |
+  Assign that bug to Jane Manager
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [assigned, Jane]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the bug was assigned to Jane Manager.
 ---
-# description: Transition the bug to In Progress
-Move that bug to In Progress
+prompt: |
+  Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [comment, added]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the comment was added to the bug.
 ---
-# description: Log work time on the bug
-Log 30 minutes on the bug with description: Initial investigation and root cause analysis
+prompt: |
+  Move that bug to In Progress
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [In Progress]
+    must_not_contain: [error, failed, "cannot transition"]
+  semantic: |
+    Response should confirm the bug was transitioned to In Progress status.
+---
+prompt: |
+  Log 30 minutes on the bug with description: Initial investigation and root cause analysis
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [logged, 30]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm 30 minutes of work was logged to the bug
+    with the work description.
 ---

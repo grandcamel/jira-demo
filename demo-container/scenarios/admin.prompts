@@ -1,33 +1,134 @@
-# description: Check what permissions you have on a project
-What permissions do I have on project DEMO?
+# Admin Scenario - Tests jira-admin skill
+# Project administration and permissions
 ---
-# description: Find permissions you're missing
-What permissions am I missing on DEMO?
+prompt: |
+  What permissions do I have on project DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [permission]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list permissions the current user has on the project.
 ---
-# description: Check a specific permission (delete issues)
-Do I have permission to delete issues in DEMO?
+prompt: |
+  What permissions am I missing on DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [permission]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should identify permissions not granted to the current user.
 ---
-# description: List project roles and their members
-Show me the project roles and members for DEMO
+prompt: |
+  Do I have permission to delete issues in DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [delete]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should indicate whether the user has DELETE_ISSUES permission.
 ---
-# description: View members of a specific role
-Who are the Administrators in project DEMO?
+prompt: |
+  Show me the project roles and members for DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [role]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list project roles and their members.
 ---
-# description: Add user to a project role
-Add Jane Manager to the Developers role in DEMO
+prompt: |
+  Who are the Administrators in project DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Administrator]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list users in the Administrators role.
 ---
-# description: Preview removing a user from a role (dry-run)
-Preview removing Jane Manager from Developers role in DEMO
+prompt: |
+  Add Jane Manager to the Developers role in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane, Developer]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm Jane was added to the Developers role.
 ---
-# description: Remove user from a project role
-Remove Jane Manager from the Developers role in DEMO
+prompt: |
+  Preview removing Jane Manager from Developers role in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane, Developer, preview]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show what would happen without making changes (dry-run).
 ---
-# description: Search for users by name
-Search for users with "admin" in their name
+prompt: |
+  Remove Jane Manager from the Developers role in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane, removed]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm Jane was removed from the Developers role.
 ---
-# description: List all JIRA groups
-Show me all JIRA groups
+prompt: |
+  Search for users with "admin" in their name
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list users matching the search criteria.
 ---
-# description: View project configuration and schemes
-Show me the configuration for project DEMO
+prompt: |
+  Show me all JIRA groups
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [group]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list available JIRA groups.
+---
+prompt: |
+  Show me the configuration for project DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show project configuration including schemes and settings.
 ---

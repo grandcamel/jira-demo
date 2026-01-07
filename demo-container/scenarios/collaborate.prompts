@@ -1,30 +1,123 @@
-# description: Add a comment to track progress
-Add a comment to DEMO-3: Starting investigation of the login bug
+# Collaborate Scenario - Tests jira-collaborate skill
+# Comments, watchers, and notifications
 ---
-# description: Add a formatted comment with markdown
-Add a formatted comment to DEMO-3: **Root cause found** - the issue is in the auth.validateToken function
+prompt: |
+  Add a comment to DEMO-3: Starting investigation of the login bug
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [comment, added]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the comment was added to DEMO-3.
 ---
-# description: List all comments on an issue
-Show me all comments on DEMO-3
+prompt: |
+  Add a formatted comment to DEMO-3: **Root cause found** - the issue is in the auth.validateToken function
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [comment, added]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm a formatted markdown comment was added.
 ---
-# description: Add an internal comment for admins only
-Add an internal comment to DEMO-3 visible only to Administrators: Security review needed before fix
+prompt: |
+  Show me all comments on DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3, comment]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list all comments on the issue with authors and content.
 ---
-# description: List who is watching an issue
-Who is watching DEMO-3?
+prompt: |
+  Add an internal comment to DEMO-3 visible only to Administrators: Security review needed before fix
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [comment, internal]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm an internal/restricted comment was added.
 ---
-# description: Add a watcher to an issue
-Add Jane Manager as a watcher on DEMO-3
+prompt: |
+  Who is watching DEMO-3?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list users watching the issue.
 ---
-# description: Remove a watcher from an issue
-Remove Jane Manager from watching DEMO-3
+prompt: |
+  Add Jane Manager as a watcher on DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane, watcher]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm Jane was added as a watcher.
 ---
-# description: Preview sending a notification (dry-run)
-Preview sending a notification to the assignee and reporter of DEMO-3
+prompt: |
+  Remove Jane Manager from watching DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane, removed]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm Jane was removed from watchers.
 ---
-# description: View issue activity history
-Show me the activity history for DEMO-3
+prompt: |
+  Preview sending a notification to the assignee and reporter of DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [preview, notification]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show what notification would be sent (dry-run).
 ---
-# description: Filter activity by specific fields
-Show status and assignee changes for DEMO-3
+prompt: |
+  Show me the activity history for DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show changelog/activity history for the issue.
+---
+prompt: |
+  Show status and assignee changes for DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show filtered history of status and assignee changes.
 ---

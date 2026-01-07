@@ -1,27 +1,117 @@
-# description: View the project backlog
-Show me the backlog for project DEMO
+# Agile Scenario - Tests jira-agile skill
+# Epic, sprint, and backlog management
 ---
-# description: View the current sprint
-What's in the current sprint for DEMO?
+prompt: |
+  Show me the backlog for project DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-]
+    must_not_contain: [error, failed, "I don't have access"]
+  semantic: |
+    Response should show the project backlog with issues,
+    their priorities, and status.
 ---
-# description: Check sprint progress
-What's the sprint progress for DEMO?
+prompt: |
+  What's in the current sprint for DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [sprint]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list issues in the active sprint,
+    or indicate if no sprint is active.
 ---
-# description: View all epics in the project
-Show me all epics in DEMO
+prompt: |
+  What's the sprint progress for DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [sprint]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show sprint progress including completed,
+    in progress, and remaining work.
 ---
-# description: Check epic progress (Product Launch)
-What's the progress on epic DEMO-1?
+prompt: |
+  Show me all epics in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-1, Epic]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list all epics in the project.
+    Should include DEMO-1 (Product Launch).
 ---
-# description: Check what Jane is working on this sprint
-What is Jane Manager working on in the current sprint?
+prompt: |
+  What's the progress on epic DEMO-1?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-1]
+    must_not_contain: [error, "not found"]
+  semantic: |
+    Response should show epic progress including linked issues
+    and completion percentage.
 ---
-# description: Add an issue to the current sprint
-Add DEMO-4 to the current sprint
+prompt: |
+  What is Jane Manager working on in the current sprint?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Jane]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show issues assigned to Jane in the current sprint.
 ---
-# description: Set story points on an issue
-Set story points on DEMO-2 to 5
+prompt: |
+  Add DEMO-4 to the current sprint
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-4, sprint]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm DEMO-4 was added to the active sprint.
 ---
-# description: Create a new story under the epic
-Create a story in DEMO: Implement API rate limiting, linked to epic DEMO-1, with 3 story points
+prompt: |
+  Set story points on DEMO-2 to 5
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-2, 5]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm story points were set on DEMO-2.
+---
+prompt: |
+  Create a story in DEMO: Implement API rate limiting, linked to epic DEMO-1, with 3 story points
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, created, Story]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm story creation with link to epic
+    and story points set.
 ---
