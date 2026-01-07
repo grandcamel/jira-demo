@@ -135,30 +135,11 @@ The demo uses a pre-configured JIRA sandbox at `jasonkrue.atlassian.net`:
 
 ### DEMO Project (Scrum)
 
-| Key | Type | Summary |
-|-----|------|---------|
-| DEMO-84 | Epic | Product Launch |
-| DEMO-85 | Story | User Authentication |
-| DEMO-86 | Bug | Login fails on mobile Safari |
-| DEMO-87 | Task | Update API documentation |
-| DEMO-88 | Story | Dashboard redesign |
-| DEMO-89 | Task | Performance optimization |
-| DEMO-90 | Story | Add dark mode support |
-| DEMO-91 | Bug | Search pagination bug |
-| DEMO-92 | Story | Email notification settings |
-| DEMO-93 | Task | Security audit preparation |
-
-Seed issues are identified by the `demo` label and preserved during cleanup. User-created issues (no label) are deleted between sessions.
+Seed script creates 10 issues: 1 Epic, 3 Stories, 2 Bugs, 4 Tasks. Issues labeled `demo` are preserved during cleanup. Two issues are assigned to Jane Manager for search demos.
 
 ### DEMOSD Service Desk (JSM)
 
-| Key | Type | Summary |
-|-----|------|---------|
-| DEMOSD-20 | IT help | Can't connect to VPN |
-| DEMOSD-21 | Computer support | New laptop for development |
-| DEMOSD-22 | New employee | New hire starting Monday - Alex Chen |
-| DEMOSD-23 | Travel request | Conference travel to AWS re:Invent |
-| DEMOSD-24 | Purchase over $100 | Purchase ergonomic keyboard |
+Seed script creates 5 service requests across various request types (IT help, Computer support, New employee, Travel, Purchase).
 
 ### Resetting the Sandbox
 
