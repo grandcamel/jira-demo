@@ -362,6 +362,48 @@ Set `JIRA_SKILLS_PATH` to override default skills location:
 JIRA_SKILLS_PATH=/path/to/Jira-Assistant-Skills make test-skill-dev SCENARIO=search
 ```
 
+### Telemetry (Enabled by Default)
+
+Skill tests send traces and logs to the LGTM stack by default. Use `--no-debug` to disable.
+
+**Tempo Spans:**
+| Span | Attributes |
+|------|------------|
+| `skill_test.run` | `scenario`, `prompt_count`, `model`, `judge_model`, `passed_count`, `pass_rate`, `quality_*` |
+| `skill_test.prompt` | `prompt_index`, `passed`, `quality`, `tool_accuracy`, `tools_called` |
+| `claude.prompt` | `prompt_index`, `model`, `response_length`, `tools_count`, `cost_usd`, `duration_seconds` |
+| `llm.judge` | `prompt_index`, `model`, `quality`, `tool_accuracy` |
+
+**Loki Log Events:**
+| Event | Level | Content |
+|-------|-------|---------|
+| `test_start` | info | Scenario name, prompt count, models |
+| `prompt_start` | info | Prompt text, model, index |
+| `tool_use` | debug | Tool name, input JSON |
+| `tool_result` | debug | Tool name, result preview |
+| `prompt_complete` | info | Duration, response length, tools called, cost |
+| `assertion_failure` | warning | Failed tool/text assertions |
+| `judge_complete` | info | Quality rating, reasoning |
+| `test_complete` | info/warning | Pass rate, quality distribution, duration |
+
+**Environment Variables:**
+- `OTEL_EXPORTER_OTLP_ENDPOINT` - Tempo endpoint (default: `http://localhost:4318`, Docker: `http://host.docker.internal:4318`)
+- `LOKI_ENDPOINT` - Loki endpoint (default: `http://localhost:3100`, Docker: `http://host.docker.internal:3100`)
+
+**Query Examples:**
+```bash
+# All skill-test logs
+curl -s "http://localhost:3100/loki/api/v1/query_range?query={job=\"skill-test\"}"
+
+# Failures only
+curl -s "http://localhost:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={job="skill-test",level="warning"}'
+
+# Specific scenario
+curl -s "http://localhost:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={job="skill-test",scenario="search"}'
+```
+
 ---
 
 ## Claude Code Plugins
