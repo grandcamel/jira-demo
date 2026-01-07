@@ -226,14 +226,24 @@ main_menu_loop() {
                 clear
                 echo -e "${GREEN}Starting Claude in interactive mode...${NC}"
                 echo -e "${YELLOW}Tip: Type 'exit' or press Ctrl+C to return to menu${NC}"
-                echo ""
-                claude --dangerously-skip-permissions "Hello, JIRA!" || true
+                if [ "${AUTOPLAY_DEBUG:-false}" = "true" ]; then
+                    echo -e "${YELLOW}Debug mode enabled${NC}"
+                    echo ""
+                    claude --debug --dangerously-skip-permissions "Hello, JIRA!" || true
+                else
+                    echo ""
+                    claude --dangerously-skip-permissions "Hello, JIRA!" || true
+                fi
                 ;;
             3)
                 clear
                 echo -e "${GREEN}Starting Bash shell...${NC}"
                 echo -e "${YELLOW}Tip: Type 'exit' to return to menu${NC}"
-                echo -e "${YELLOW}     Run 'claude --dangerously-skip-permissions' to start Claude${NC}"
+                if [ "${AUTOPLAY_DEBUG:-false}" = "true" ]; then
+                    echo -e "${YELLOW}     Run 'claude --debug --dangerously-skip-permissions' to start Claude${NC}"
+                else
+                    echo -e "${YELLOW}     Run 'claude --dangerously-skip-permissions' to start Claude${NC}"
+                fi
                 echo ""
                 /bin/bash -l || true
                 ;;
