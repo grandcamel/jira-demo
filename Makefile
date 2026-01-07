@@ -1,6 +1,6 @@
 .PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
-	logs-errors-local traces-errors-local run-scenario test-skill
+	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev refine-skill
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -222,6 +222,50 @@ test-skill:
 			$(if $(VERBOSE),--verbose,) \
 			$(if $(JSON),--json,)
 
+# Fast skill testing with local source mounts (no rebuild needed)
+# JIRA_SKILLS_PATH: Path to Jira-Assistant-Skills repo root
+# Usage: make test-skill-dev SCENARIO=search
+#        make test-skill-dev SCENARIO=search PROMPT_INDEX=0  # Single prompt for fast iteration
+#        make test-skill-dev SCENARIO=search FIX_CONTEXT=1   # Output fix context JSON
+JIRA_SKILLS_PATH ?= /Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills
+JIRA_PLUGIN_PATH = $(JIRA_SKILLS_PATH)/plugins/jira-assistant-skills
+JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib
+test-skill-dev:
+	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-dev SCENARIO=<name> [PROMPT_INDEX=N] [FIX_CONTEXT=1]"; exit 1; fi
+	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	@docker run --rm \
+		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
+		-e JIRA_EMAIL=$(JIRA_EMAIL) \
+		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
+		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
+		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
+		--entrypoint bash \
+		jira-demo-container:latest \
+		-c "pip install -q -e /opt/jira-lib 2>/dev/null; \
+		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
+		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
+		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
+		    --model $(or $(MODEL),sonnet) \
+		    --judge-model $(or $(JUDGE_MODEL),haiku) \
+		    $(if $(VERBOSE),--verbose,) \
+		    $(if $(JSON),--json,) \
+		    $(if $(PROMPT_INDEX),--prompt-index $(PROMPT_INDEX),) \
+		    $(if $(FIX_CONTEXT),--fix-context $(JIRA_SKILLS_PATH),)"
+
+# Skill refinement loop - iteratively test and fix skills
+# Usage: make refine-skill SCENARIO=search MAX_ATTEMPTS=3
+refine-skill:
+	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make refine-skill SCENARIO=<name> [MAX_ATTEMPTS=3]"; exit 1; fi
+	python demo-container/skill-refine-loop.py \
+		--scenario $(SCENARIO) \
+		--jira-skills-path $(JIRA_SKILLS_PATH) \
+		--max-attempts $(or $(MAX_ATTEMPTS),3) \
+		--model $(or $(MODEL),sonnet) \
+		--judge-model $(or $(JUDGE_MODEL),haiku) \
+		$(if $(VERBOSE),--verbose,)
+
 # Help
 help:
 	@echo "JIRA Demo Management Commands"
@@ -261,7 +305,9 @@ help:
 	@echo "  make run-scenario SCENARIO=issue      - Run scenario in debug mode (auto-advance)"
 	@echo "  make run-scenario SCENARIO=search DELAY=5 - Run with custom delay"
 	@echo "  make test-skill SCENARIO=search       - Run skill test with assertions"
-	@echo "  make test-skill SCENARIO=search MODEL=opus JUDGE_MODEL=sonnet - Custom models"
+	@echo "  make test-skill-dev SCENARIO=search   - Fast test with local source mounts"
+	@echo "  make test-skill-dev SCENARIO=search PROMPT_INDEX=0 - Test single prompt"
+	@echo "  make refine-skill SCENARIO=search     - Iterative test+fix loop"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make check-token    - Check Claude OAuth token expiration"
