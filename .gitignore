@@ -1,13 +1,15 @@
 # Secrets (NEVER commit)
-secrets/.env
-secrets/.claude.json
-secrets/.credentials.json
-secrets/jira.env
+secrets/
+!secrets/example.*
 *.pem
 *.key
 
-# Keep example files
-!secrets/example.*
+# Local Claude plugin development
+.claude-plugin/
+grafana-skills/
+
+# Backup files
+*.bak
 
 # Node
 node_modules/
