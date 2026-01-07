@@ -14,7 +14,6 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -274,7 +273,7 @@ def run_tool_assertions(
         results.append((
             f"must_not_call: {tool}",
             passed,
-            f"but was called" if not passed else "",
+            "but was called" if not passed else "",
         ))
 
     return results
