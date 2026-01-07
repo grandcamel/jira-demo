@@ -27,5 +27,5 @@ ssh root@assistant-skills.dev 'curl -s "http://localhost:3200/api/traces/<TRACE_
 Or view traces in Grafana (requires active session):
 
 ```
-https://assistant-skills.dev/grafana/explore?orgId=1&left={"datasource":"tempo","queries":[{"refId":"A","queryType":"traceql","query":"{status=error}"}]}
+https://jira-demo.assistant-skills.dev/grafana/explore?orgId=1&left={"datasource":"tempo","queries":[{"refId":"A","queryType":"traceql","query":"{status=error}"}]}
 ```
