@@ -29,6 +29,14 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Seed issues**: Identified by `demo` label. User issues (no label) deleted on cleanup.
 - **Slash commands**: Prefer Makefile targets over inline bash.
 
+## Gotchas
+
+- **OAuth token expires**: Run `make check-token` before skill tests. If expired, run `/refresh-token`.
+- **JIRA keys auto-increment**: Reseeding creates new keys (DEMO-84+), not DEMO-1. Prompts must use current keys.
+- **Rebuild after prompt changes**: Container caches scenarios. Run `make build` after editing `.prompts` files.
+- **Prompts run independently**: No conversation context between prompts. Use explicit issue keys, not "that bug".
+- **YAML parses numbers**: `must_contain: [30]` becomes int. Code must handle with `str(pattern)`.
+
 ## Architecture
 
 ```
