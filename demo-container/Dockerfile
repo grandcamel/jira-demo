@@ -1,7 +1,11 @@
 # =============================================================================
 # JIRA Assistant Skills Demo Container
 # =============================================================================
-FROM grandcamel/claude-devcontainer:enhanced
+# Override base image for custom builds (e.g., with zscaler certs):
+#   docker build --build-arg BASE_IMAGE=your-registry/claude-devcontainer:enhanced .
+#   make build BASE_IMAGE=your-registry/claude-devcontainer:enhanced
+ARG BASE_IMAGE=grandcamel/claude-devcontainer:enhanced
+FROM ${BASE_IMAGE}
 
 USER root
 

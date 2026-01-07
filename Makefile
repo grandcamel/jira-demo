@@ -17,10 +17,12 @@ dev-down:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
 
 # Build
+# Override base image: make build BASE_IMAGE=your-registry/claude-devcontainer:enhanced
+BASE_IMAGE ?= grandcamel/claude-devcontainer:enhanced
 build:
 	@echo "Building all containers..."
 	docker-compose build
-	docker build -t jira-demo-container:latest ./demo-container
+	docker build --build-arg BASE_IMAGE=$(BASE_IMAGE) -t jira-demo-container:latest ./demo-container
 
 # Deploy
 deploy:
