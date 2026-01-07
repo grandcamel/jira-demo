@@ -1,30 +1,131 @@
-# description: Basic search - find all open issues
-Show me all open issues in DEMO
+# Search Scenario - Tests jira-search skill
+# Enhanced format with expectations for skill testing
 ---
-# description: Search by issue type - find all bugs
-Find all bugs in DEMO
+prompt: |
+  Show me all open issues in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-]
+    must_not_contain: [error, "I don't have access", "I couldn't find"]
+  semantic: |
+    Response should list open issues from DEMO project with issue keys,
+    summaries, and status. Should use jira-search skill, not shell commands.
 ---
-# description: Search by issue type - find all stories
-Show me all stories in DEMO
+prompt: |
+  Find all bugs in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, Bug]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list bugs from DEMO project. Should show issue type
+    as Bug and include issue keys and summaries.
 ---
-# description: Search by priority - find high priority issues
-What are the high priority issues in DEMO?
+prompt: |
+  Show me all stories in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, Story]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list stories from DEMO project with issue keys and summaries.
 ---
-# description: Search by status - find in-progress issues
-Show me issues that are In Progress in DEMO
+prompt: |
+  What are the high priority issues in DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, High]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list high priority issues showing priority level clearly.
 ---
-# description: Search by assignee - find my assigned issues
-What issues are assigned to me in DEMO?
+prompt: |
+  Show me issues that are In Progress in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show issues with In Progress status. May show none if
+    no issues are currently in progress.
 ---
-# description: Search by assignee - find Jane's assigned issues
-Show me issues assigned to Jane Manager in DEMO
+prompt: |
+  What issues are assigned to me in DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-]
+    must_not_contain: [error, "I don't have access"]
+  semantic: |
+    Response should list issues assigned to the current user (Jason Krueger).
+    May show none if no issues are assigned.
 ---
-# description: Search by reporter - find issues reported by Jane
-Find issues reported by Jane in DEMO
+prompt: |
+  Show me issues assigned to Jane Manager in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3, DEMO-4, Jane Manager]
+    must_not_contain: [error, "couldn't find user"]
+  semantic: |
+    Response should list DEMO-3 (Login bug) and DEMO-4 (API documentation)
+    which are assigned to Jane Manager.
 ---
-# description: Combined search - high priority open bugs
-Find high priority bugs that are still open in DEMO
+prompt: |
+  Find issues reported by Jane in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-8]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should include DEMO-8 (Search pagination bug) which was
+    reported by Jane Manager.
 ---
-# description: Text search - find issues mentioning login
-Search for issues mentioning 'login' in DEMO
+prompt: |
+  Find high priority bugs that are still open in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3, High, Bug]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show high priority bugs that are open. DEMO-3
+    (Login fails on mobile Safari) is a high priority bug.
+---
+prompt: |
+  Search for issues mentioning 'login' in DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3, login]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should find DEMO-3 which has 'login' in the summary.
+    Text search should use JQL text operator.
 ---
