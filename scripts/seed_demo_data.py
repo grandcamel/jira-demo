@@ -356,14 +356,13 @@ Examples:
         """,
     )
     parser.add_argument("--dry-run", action="store_true", help="Show what would be created without making changes")
-    parser.add_argument("--profile", default="demo", help="JIRA profile to use (default: demo)")
     args = parser.parse_args()
 
     # Initialize OpenTelemetry tracing
     init_telemetry("jira-demo-seed")
 
     try:
-        client = get_jira_client(profile=args.profile)
+        client = get_jira_client()
 
         print("=" * 60)
         print("JIRA Demo Sandbox Seeding")
