@@ -1,6 +1,6 @@
 .PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
-	logs-errors-local traces-errors-local
+	logs-errors-local traces-errors-local run-scenario
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -148,6 +148,24 @@ test-landing:
 test-terminal:
 	@open http://localhost:7681
 
+# Run scenario in debug mode (auto-advance, no prompts)
+# Usage: make run-scenario SCENARIO=issue
+#        make run-scenario SCENARIO=search DELAY=5
+run-scenario:
+	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make run-scenario SCENARIO=<name> [DELAY=3]"; echo "Scenarios: issue, search, agile, jsm, admin, bulk, collaborate, dev, fields, relationships, time"; exit 1; fi
+	docker run --rm --entrypoint bash \
+		-e TERM=xterm \
+		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
+		-e JIRA_EMAIL=$(JIRA_EMAIL) \
+		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
+		-e AUTOPLAY_DEBUG=true \
+		-e OTEL_ENDPOINT=http://host.docker.internal:3100 \
+		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.claude.json:/tmp/.claude.json.source:ro \
+		--add-host=host.docker.internal:host-gateway \
+		jira-demo-container:latest \
+		-c "/workspace/autoplay.sh --auto-advance --delay $(or $(DELAY),3) --debug $(SCENARIO)"
+
 # =============================================================================
 # Local Development Operations (for slash commands)
 # =============================================================================
@@ -219,6 +237,10 @@ help:
 	@echo "Observability:"
 	@echo "  make otel-logs      - View LGTM stack logs"
 	@echo "  make otel-reset     - Reset observability data"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make run-scenario SCENARIO=issue      - Run scenario in debug mode (auto-advance)"
+	@echo "  make run-scenario SCENARIO=search DELAY=5 - Run with custom delay"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make check-token    - Check Claude OAuth token expiration"
