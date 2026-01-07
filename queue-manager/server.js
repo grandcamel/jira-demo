@@ -845,6 +845,7 @@ async function startSession(ws, client) {
       '--max-clients', '1',
       '--once',
       '--writable',
+      '--client-option', 'reconnect=0',
       'docker', 'run', '--rm', '-it',
       '-e', 'TERM=xterm',
       '-e', `JIRA_API_TOKEN=${process.env.JIRA_API_TOKEN}`,
