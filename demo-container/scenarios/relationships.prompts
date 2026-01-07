@@ -14,91 +14,91 @@ expect:
     Response should list available link types like Blocks, Relates, etc.
 ---
 prompt: |
-  Show me all links for DEMO-1
+  Show me all links for DEMO-84
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-1]
+    must_contain: [DEMO-84]
     must_not_contain: [error, failed]
   semantic: |
-    Response should show all issue links for DEMO-1 (epic).
+    Response should show all issue links for DEMO-84 (epic).
 ---
 prompt: |
-  Link DEMO-3 blocks DEMO-4
+  Link DEMO-86 blocks DEMO-87
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3, DEMO-4, block]
+    must_contain: [DEMO-86, DEMO-87, block]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm a blocking link was created.
 ---
 prompt: |
-  Link DEMO-5 relates to DEMO-6
+  Link DEMO-88 relates to DEMO-89
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-5, DEMO-6, relate]
+    must_contain: [DEMO-88, DEMO-89, relate]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm a relates-to link was created.
 ---
 prompt: |
-  Mark DEMO-8 as a duplicate of DEMO-3
+  Mark DEMO-91 as a duplicate of DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-8, DEMO-3, duplicate]
+    must_contain: [DEMO-91, DEMO-86, duplicate]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm a duplicate link was created.
 ---
 prompt: |
-  Show me issues that DEMO-3 blocks
+  Show me issues that DEMO-86 blocks
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
-    Response should show outward blocking links from DEMO-3.
+    Response should show outward blocking links from DEMO-86.
 ---
 prompt: |
-  What is blocking DEMO-4?
+  What is blocking DEMO-87?
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-4]
+    must_contain: [DEMO-87]
     must_not_contain: [error, failed]
   semantic: |
-    Response should show issues that block DEMO-4.
+    Response should show issues that block DEMO-87.
 ---
 prompt: |
-  Show me the full blocker chain for DEMO-4
+  Show me the full blocker chain for DEMO-87
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-4]
+    must_contain: [DEMO-87]
     must_not_contain: [error, failed]
   semantic: |
     Response should show recursive blocker chain analysis.
 ---
 prompt: |
-  Clone DEMO-3 to a new issue
+  Clone DEMO-86 to a new issue
 expect:
   tools:
     must_call: [Skill]
@@ -110,7 +110,7 @@ expect:
     Response should confirm issue was cloned with new issue key.
 ---
 prompt: |
-  Clone DEMO-1 including subtasks and links
+  Clone DEMO-84 including subtasks and links
 expect:
   tools:
     must_call: [Skill]
@@ -122,13 +122,13 @@ expect:
     Response should confirm epic clone with subtasks and links.
 ---
 prompt: |
-  Preview removing all links from DEMO-8
+  Preview removing all links from DEMO-91
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-8, preview]
+    must_contain: [DEMO-91, preview]
     must_not_contain: [error, failed]
   semantic: |
     Response should show what links would be removed (dry-run).

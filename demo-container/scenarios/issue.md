@@ -13,10 +13,10 @@ You should see a list of pre-seeded issues including bugs, tasks, and stories.
 ## Step 2: Get Issue Details
 
 ```
-What's the status of DEMO-1?
+What's the status of DEMO-84?
 ```
 
-DEMO-1 is an Epic called "Product Launch". Claude will show you its details,
+DEMO-84 is an Epic called "Product Launch". Claude will show you its details,
 including linked issues.
 
 ## Step 3: Create a New Bug
@@ -41,7 +41,7 @@ Replace DEMO-11 with your actual issue key.
 What issues are assigned to Jane?
 ```
 
-DEMO-3 (Login bug) and DEMO-4 (API documentation) are assigned to Jane Manager.
+DEMO-86 (Login bug) and DEMO-87 (API documentation) are assigned to Jane Manager.
 
 ## Step 6: Assign the Bug to Jane
 

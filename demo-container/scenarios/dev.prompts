@@ -2,49 +2,49 @@
 # Developer workflow integration
 ---
 prompt: |
-  Generate a git branch name for DEMO-3
+  Generate a git branch name for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should generate a git branch name based on issue key and summary.
 ---
 prompt: |
-  Generate a branch name for DEMO-3 with automatic prefix based on issue type
+  Generate a branch name for DEMO-86 with automatic prefix based on issue type
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should generate a branch name with type-based prefix (bug/, feature/, etc.).
 ---
 prompt: |
-  Generate a hotfix branch name for DEMO-3
+  Generate a hotfix branch name for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [hotfix, DEMO-3]
+    must_contain: [hotfix, DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should generate a hotfix branch name format.
 ---
 prompt: |
-  Give me the git checkout command for DEMO-3
+  Give me the git checkout command for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [git checkout, DEMO-3]
+    must_contain: [git checkout, DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should provide a complete git checkout command.
@@ -62,61 +62,61 @@ expect:
     Response should parse and identify JIRA issue keys from the text.
 ---
 prompt: |
-  Generate a pull request description for DEMO-3
+  Generate a pull request description for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should generate a PR description with issue details.
 ---
 prompt: |
-  Generate a PR description for DEMO-3 with a testing checklist
+  Generate a PR description for DEMO-86 with a testing checklist
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3, test]
+    must_contain: [DEMO-86, test]
     must_not_contain: [error, failed]
   semantic: |
     Response should include PR description with testing checklist items.
 ---
 prompt: |
-  Generate a PR description for DEMO-3 including labels and components
+  Generate a PR description for DEMO-86 including labels and components
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should include issue labels and components in the PR description.
 ---
 prompt: |
-  Show me the commits linked to DEMO-3
+  Show me the commits linked to DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should show commits associated with the issue (may be empty).
 ---
 prompt: |
-  Show detailed commit information for DEMO-3
+  Show detailed commit information for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should show detailed commit info or indicate no commits linked.

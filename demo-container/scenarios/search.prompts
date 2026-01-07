@@ -84,10 +84,10 @@ expect:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3, DEMO-4, Jane Manager]
+    must_contain: [DEMO-86, DEMO-87, Jane Manager]
     must_not_contain: [error, "couldn't find user"]
   semantic: |
-    Response should list DEMO-3 (Login bug) and DEMO-4 (API documentation)
+    Response should list DEMO-86 (Login bug) and DEMO-87 (API documentation)
     which are assigned to Jane Manager.
 ---
 prompt: |
@@ -97,10 +97,10 @@ expect:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-8]
+    must_contain: [DEMO-91]
     must_not_contain: [error, failed]
   semantic: |
-    Response should include DEMO-8 (Search pagination bug) which was
+    Response should include DEMO-91 (Search pagination bug) which was
     reported by Jane Manager.
 ---
 prompt: |
@@ -110,10 +110,10 @@ expect:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3, High, Bug]
+    must_contain: [DEMO-86, High, Bug]
     must_not_contain: [error, failed]
   semantic: |
-    Response should show high priority bugs that are open. DEMO-3
+    Response should show high priority bugs that are open. DEMO-86
     (Login fails on mobile Safari) is a high priority bug.
 ---
 prompt: |
@@ -123,9 +123,9 @@ expect:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3, login]
+    must_contain: [DEMO-86, login]
     must_not_contain: [error, failed]
   semantic: |
-    Response should find DEMO-3 which has 'login' in the summary.
+    Response should find DEMO-86 which has 'login' in the summary.
     Text search should use JQL text operator.
 ---

@@ -46,7 +46,7 @@ Show me all issues in DEMO project
 ```
 
 ```
-What's the status of DEMO-1?
+What's the status of DEMO-84?
 ```
 
 ```

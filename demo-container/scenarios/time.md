@@ -5,7 +5,7 @@ This walkthrough demonstrates comprehensive time tracking - logging work, estima
 ## Step 1: Log Time
 
 ```
-Log 2 hours on DEMO-3
+Log 2 hours on DEMO-86
 ```
 
 Basic time logging to track work.
@@ -13,7 +13,7 @@ Basic time logging to track work.
 ## Step 2: Log Time with Comment
 
 ```
-Log 1 hour 30 minutes on DEMO-3 with comment: Debugging authentication flow
+Log 1 hour 30 minutes on DEMO-86 with comment: Debugging authentication flow
 ```
 
 Add context to your time entries.
@@ -21,7 +21,7 @@ Add context to your time entries.
 ## Step 3: Log Time for Yesterday
 
 ```
-Log 2 hours on DEMO-3 for yesterday
+Log 2 hours on DEMO-86 for yesterday
 ```
 
 Backdate time entries when needed.
@@ -29,7 +29,7 @@ Backdate time entries when needed.
 ## Step 4: View Worklogs
 
 ```
-Show me all time logged on DEMO-3
+Show me all time logged on DEMO-86
 ```
 
 See all work log entries for an issue.
@@ -37,7 +37,7 @@ See all work log entries for an issue.
 ## Step 5: View Time Tracking Summary
 
 ```
-What is the time tracking status of DEMO-3?
+What is the time tracking status of DEMO-86?
 ```
 
 See original estimate, remaining, and time spent.
@@ -45,19 +45,19 @@ See original estimate, remaining, and time spent.
 ## Step 6: Set Original Estimate
 
 ```
-Set the original estimate for DEMO-4 to 2 days
+Set the original estimate for DEMO-87 to 2 days
 ```
 
 ## Step 7: Set Remaining Estimate
 
 ```
-Set the remaining estimate for DEMO-4 to 1 day 4 hours
+Set the remaining estimate for DEMO-87 to 1 day 4 hours
 ```
 
 ## Step 8: Log Without Adjusting Estimate
 
 ```
-Log 30 minutes on DEMO-3 without adjusting the estimate
+Log 30 minutes on DEMO-86 without adjusting the estimate
 ```
 
 Keep estimate unchanged when logging time.
@@ -105,7 +105,7 @@ For billing and invoicing systems.
 ## Step 14: Preview Bulk Time Logging
 
 ```
-Preview logging 15 minutes to DEMO-3, DEMO-4, and DEMO-5
+Preview logging 15 minutes to DEMO-86, DEMO-87, and DEMO-88
 ```
 
 Dry-run before bulk operations.
@@ -113,7 +113,7 @@ Dry-run before bulk operations.
 ## Step 15: Delete a Worklog
 
 ```
-Preview deleting the last worklog on DEMO-3
+Preview deleting the last worklog on DEMO-86
 ```
 
 Always preview before deleting.
