@@ -202,30 +202,10 @@ autoplay_loop() {
         show_autoplay_menu
         read -rp "Select scenario to auto-play: " choice
         case $choice in
-            1)
-                /workspace/autoplay.sh issue || true
-                echo ""
-                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
-                read -r
-                ;;
-            2)
-                /workspace/autoplay.sh search || true
-                echo ""
-                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
-                read -r
-                ;;
-            3)
-                /workspace/autoplay.sh agile || true
-                echo ""
-                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
-                read -r
-                ;;
-            4)
-                /workspace/autoplay.sh jsm || true
-                echo ""
-                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
-                read -r
-                ;;
+            1) /workspace/autoplay.sh issue || true ;;
+            2) /workspace/autoplay.sh search || true ;;
+            3) /workspace/autoplay.sh agile || true ;;
+            4) /workspace/autoplay.sh jsm || true ;;
             b|B) return ;;
             *) echo -e "${YELLOW}Invalid option${NC}"; sleep 1 ;;
         esac
@@ -248,9 +228,6 @@ main_menu_loop() {
                 echo -e "${YELLOW}Tip: Type 'exit' or press Ctrl+C to return to menu${NC}"
                 echo ""
                 claude --dangerously-skip-permissions "Hello, JIRA!" || true
-                echo ""
-                echo -e "${YELLOW}Press Enter to return to menu...${NC}"
-                read -r
                 ;;
             3)
                 clear
