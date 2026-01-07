@@ -13,23 +13,23 @@ See all configured link types (Blocks, Duplicates, Relates to, etc.).
 ## Step 2: View Issue Links
 
 ```
-Show me all links for DEMO-1
+Show me all links for DEMO-84
 ```
 
-DEMO-1 (Product Launch Epic) has linked stories and tasks.
+DEMO-84 (Product Launch Epic) has linked stories and tasks.
 
 ## Step 3: Create a Blocks Link
 
 ```
-Link DEMO-3 blocks DEMO-4
+Link DEMO-86 blocks DEMO-87
 ```
 
-DEMO-3 (Login bug) must be fixed before DEMO-4 (API documentation).
+DEMO-86 (Login bug) must be fixed before DEMO-87 (API documentation).
 
 ## Step 4: Create a Relates Link
 
 ```
-Link DEMO-5 relates to DEMO-6
+Link DEMO-88 relates to DEMO-89
 ```
 
 Create a general association between issues.
@@ -37,7 +37,7 @@ Create a general association between issues.
 ## Step 5: Create a Duplicate Link
 
 ```
-Mark DEMO-8 as a duplicate of DEMO-3
+Mark DEMO-91 as a duplicate of DEMO-86
 ```
 
 Mark redundant issues for cleanup.
@@ -45,7 +45,7 @@ Mark redundant issues for cleanup.
 ## Step 6: View Outward Links Only
 
 ```
-Show me issues that DEMO-3 blocks
+Show me issues that DEMO-86 blocks
 ```
 
 Filter links by direction.
@@ -53,7 +53,7 @@ Filter links by direction.
 ## Step 7: Find Blockers
 
 ```
-What is blocking DEMO-4?
+What is blocking DEMO-87?
 ```
 
 See direct blockers for an issue.
@@ -61,7 +61,7 @@ See direct blockers for an issue.
 ## Step 8: Find Blocker Chain
 
 ```
-Show me the full blocker chain for DEMO-4
+Show me the full blocker chain for DEMO-87
 ```
 
 Recursive analysis finds all transitive blockers.
@@ -69,7 +69,7 @@ Recursive analysis finds all transitive blockers.
 ## Step 9: Clone an Issue
 
 ```
-Clone DEMO-3 to a new issue
+Clone DEMO-86 to a new issue
 ```
 
 Create a copy with a link to the original.
@@ -77,19 +77,19 @@ Create a copy with a link to the original.
 ## Step 10: Clone with Subtasks
 
 ```
-Clone DEMO-1 including subtasks and links
+Clone DEMO-84 including subtasks and links
 ```
 
 ## Step 11: Remove a Link
 
 ```
-Remove the blocks link between DEMO-3 and DEMO-4
+Remove the blocks link between DEMO-86 and DEMO-87
 ```
 
 ## Step 12: Preview Link Removal
 
 ```
-Preview removing all links from DEMO-8
+Preview removing all links from DEMO-91
 ```
 
 Dry-run before removing links.
@@ -105,7 +105,7 @@ Analyze link patterns across the project.
 ## Step 14: Generate Dependency Graph
 
 ```
-Generate a Mermaid diagram of dependencies for DEMO-1
+Generate a Mermaid diagram of dependencies for DEMO-84
 ```
 
 Create visual documentation of relationships.

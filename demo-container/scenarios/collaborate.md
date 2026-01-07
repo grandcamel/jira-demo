@@ -5,7 +5,7 @@ This walkthrough demonstrates team collaboration features - comments, attachment
 ## Step 1: Add a Comment
 
 ```
-Add a comment to DEMO-3: Starting investigation of the login bug
+Add a comment to DEMO-86: Starting investigation of the login bug
 ```
 
 Comments help track progress and communicate with the team.
@@ -13,7 +13,7 @@ Comments help track progress and communicate with the team.
 ## Step 2: Add a Rich Text Comment
 
 ```
-Add a formatted comment to DEMO-3 with bold and code: **Root cause found** - the issue is in `auth.validateToken()`
+Add a formatted comment to DEMO-86 with bold and code: **Root cause found** - the issue is in `auth.validateToken()`
 ```
 
 Claude supports markdown formatting in comments.
@@ -21,7 +21,7 @@ Claude supports markdown formatting in comments.
 ## Step 3: List Comments
 
 ```
-Show me all comments on DEMO-3
+Show me all comments on DEMO-86
 ```
 
 View the conversation history for an issue.
@@ -29,7 +29,7 @@ View the conversation history for an issue.
 ## Step 4: Add an Internal Comment
 
 ```
-Add an internal comment to DEMO-3 visible only to Administrators: Security review needed before fix
+Add an internal comment to DEMO-86 visible only to Administrators: Security review needed before fix
 ```
 
 Internal comments are restricted to specific roles.
@@ -37,7 +37,7 @@ Internal comments are restricted to specific roles.
 ## Step 5: List Watchers
 
 ```
-Who is watching DEMO-3?
+Who is watching DEMO-86?
 ```
 
 Watchers receive notifications about issue changes.
@@ -45,25 +45,25 @@ Watchers receive notifications about issue changes.
 ## Step 6: Add a Watcher
 
 ```
-Add Jane Manager as a watcher on DEMO-3
+Add Jane Manager as a watcher on DEMO-86
 ```
 
 ## Step 7: Remove a Watcher
 
 ```
-Remove Jane Manager from watching DEMO-3
+Remove Jane Manager from watching DEMO-86
 ```
 
 ## Step 8: Send a Notification
 
 ```
-Send a notification to watchers of DEMO-3 with subject "Fix Ready" and message "The fix is ready for testing"
+Send a notification to watchers of DEMO-86 with subject "Fix Ready" and message "The fix is ready for testing"
 ```
 
 ## Step 9: Preview Notification (Dry Run)
 
 ```
-Preview sending a notification to the assignee and reporter of DEMO-3
+Preview sending a notification to the assignee and reporter of DEMO-86
 ```
 
 Always preview before sending to verify recipients.
@@ -71,7 +71,7 @@ Always preview before sending to verify recipients.
 ## Step 10: View Activity History
 
 ```
-Show me the activity history for DEMO-3
+Show me the activity history for DEMO-86
 ```
 
 See all changes made to an issue over time.
@@ -79,7 +79,7 @@ See all changes made to an issue over time.
 ## Step 11: Filter Activity by Field
 
 ```
-Show status and assignee changes for DEMO-3
+Show status and assignee changes for DEMO-86
 ```
 
 Focus on specific field changes.
@@ -87,7 +87,7 @@ Focus on specific field changes.
 ## Step 12: Upload an Attachment
 
 ```
-Upload screenshot.png to DEMO-3
+Upload screenshot.png to DEMO-86
 ```
 
 Note: This requires a file to exist. In practice, provide the file path.

@@ -2,7 +2,7 @@
 # Comments, watchers, and notifications
 ---
 prompt: |
-  Add a comment to DEMO-3: Starting investigation of the login bug
+  Add a comment to DEMO-86: Starting investigation of the login bug
 expect:
   tools:
     must_call: [Skill]
@@ -11,10 +11,10 @@ expect:
     must_contain: [comment, added]
     must_not_contain: [error, failed]
   semantic: |
-    Response should confirm the comment was added to DEMO-3.
+    Response should confirm the comment was added to DEMO-86.
 ---
 prompt: |
-  Add a formatted comment to DEMO-3: **Root cause found** - the issue is in the auth.validateToken function
+  Add a formatted comment to DEMO-86: **Root cause found** - the issue is in the auth.validateToken function
 expect:
   tools:
     must_call: [Skill]
@@ -26,19 +26,19 @@ expect:
     Response should confirm a formatted markdown comment was added.
 ---
 prompt: |
-  Show me all comments on DEMO-3
+  Show me all comments on DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3, comment]
+    must_contain: [DEMO-86, comment]
     must_not_contain: [error, failed]
   semantic: |
     Response should list all comments on the issue with authors and content.
 ---
 prompt: |
-  Add an internal comment to DEMO-3 visible only to Administrators: Security review needed before fix
+  Add an internal comment to DEMO-86 visible only to Administrators: Security review needed before fix
 expect:
   tools:
     must_call: [Skill]
@@ -50,19 +50,19 @@ expect:
     Response should confirm an internal/restricted comment was added.
 ---
 prompt: |
-  Who is watching DEMO-3?
+  Who is watching DEMO-86?
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should list users watching the issue.
 ---
 prompt: |
-  Add Jane Manager as a watcher on DEMO-3
+  Add Jane Manager as a watcher on DEMO-86
 expect:
   tools:
     must_call: [Skill]
@@ -74,7 +74,7 @@ expect:
     Response should confirm Jane was added as a watcher.
 ---
 prompt: |
-  Remove Jane Manager from watching DEMO-3
+  Remove Jane Manager from watching DEMO-86
 expect:
   tools:
     must_call: [Skill]
@@ -86,7 +86,7 @@ expect:
     Response should confirm Jane was removed from watchers.
 ---
 prompt: |
-  Preview sending a notification to the assignee and reporter of DEMO-3
+  Preview sending a notification to the assignee and reporter of DEMO-86
 expect:
   tools:
     must_call: [Skill]
@@ -98,25 +98,25 @@ expect:
     Response should show what notification would be sent (dry-run).
 ---
 prompt: |
-  Show me the activity history for DEMO-3
+  Show me the activity history for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should show changelog/activity history for the issue.
 ---
 prompt: |
-  Show status and assignee changes for DEMO-3
+  Show status and assignee changes for DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should show filtered history of status and assignee changes.

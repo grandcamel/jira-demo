@@ -233,9 +233,8 @@ curl -s "http://localhost:3100/loki/api/v1/query_range?query={job=\"nginx\",stat
 - **Jane Manager** - Test user for JIRA web UI
 
 **Jane's issues:**
-- DEMO-3 (Login bug) - assigned to Jane
-- DEMO-4 (API documentation) - assigned to Jane
-- DEMO-8 (Search pagination) - reported by Jane
+- DEMO-86 (Login bug) - assigned to Jane
+- DEMO-87 (API documentation) - assigned to Jane
 
 **Invite statuses:** `pending`, `used`, `expired`, `revoked`
 

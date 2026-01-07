@@ -46,7 +46,7 @@ What issues are assigned to me?
 Show issues assigned to Jane Manager
 ```
 
-You should see DEMO-3 and DEMO-4 which are assigned to Jane.
+You should see DEMO-86 and DEMO-87 which are assigned to Jane.
 
 ```
 Show unassigned issues in DEMO
@@ -58,7 +58,7 @@ Show unassigned issues in DEMO
 Find issues reported by Jane
 ```
 
-DEMO-8 (Search pagination bug) was reported by Jane Manager.
+DEMO-91 (Search pagination bug) was reported by Jane Manager.
 
 ## Step 7: Combined Searches
 

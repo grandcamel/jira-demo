@@ -2,7 +2,7 @@
 # Time tracking and worklogs
 ---
 prompt: |
-  Log 2 hours on DEMO-3
+  Log 2 hours on DEMO-86
 expect:
   tools:
     must_call: [Skill]
@@ -14,7 +14,7 @@ expect:
     Response should confirm 2 hours of work was logged.
 ---
 prompt: |
-  Log 1 hour 30 minutes on DEMO-3 with comment: Debugging authentication flow
+  Log 1 hour 30 minutes on DEMO-86 with comment: Debugging authentication flow
 expect:
   tools:
     must_call: [Skill]
@@ -26,7 +26,7 @@ expect:
     Response should confirm time was logged with work description.
 ---
 prompt: |
-  Log 2 hours on DEMO-3 for yesterday
+  Log 2 hours on DEMO-86 for yesterday
 expect:
   tools:
     must_call: [Skill]
@@ -38,55 +38,55 @@ expect:
     Response should confirm time was logged for the previous day.
 ---
 prompt: |
-  Show me all time logged on DEMO-3
+  Show me all time logged on DEMO-86
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should list all worklogs on the issue.
 ---
 prompt: |
-  What is the time tracking status of DEMO-3?
+  What is the time tracking status of DEMO-86?
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-3]
+    must_contain: [DEMO-86]
     must_not_contain: [error, failed]
   semantic: |
     Response should show time tracking summary (original, remaining, logged).
 ---
 prompt: |
-  Set the original estimate for DEMO-4 to 2 days
+  Set the original estimate for DEMO-87 to 2 days
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-4, estimate]
+    must_contain: [DEMO-87, estimate]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm original estimate was set.
 ---
 prompt: |
-  Set the remaining estimate for DEMO-4 to 1 day 4 hours
+  Set the remaining estimate for DEMO-87 to 1 day 4 hours
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-4, remaining]
+    must_contain: [DEMO-87, remaining]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm remaining estimate was updated.
 ---
 prompt: |
-  Log 30 minutes on DEMO-3 without adjusting the estimate
+  Log 30 minutes on DEMO-86 without adjusting the estimate
 expect:
   tools:
     must_call: [Skill]
@@ -144,13 +144,13 @@ expect:
     Response should provide CSV-formatted time data.
 ---
 prompt: |
-  Preview logging 15 minutes to DEMO-3, DEMO-4, and DEMO-5
+  Preview logging 15 minutes to DEMO-86, DEMO-87, and DEMO-88
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [preview, DEMO-3, DEMO-4, DEMO-5]
+    must_contain: [preview, DEMO-86, DEMO-87, DEMO-88]
     must_not_contain: [error, failed]
   semantic: |
     Response should preview bulk time logging (dry-run).

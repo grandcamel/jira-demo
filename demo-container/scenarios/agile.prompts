@@ -47,20 +47,20 @@ expect:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-1, Epic]
+    must_contain: [DEMO-84, Epic]
     must_not_contain: [error, failed]
   semantic: |
     Response should list all epics in the project.
-    Should include DEMO-1 (Product Launch).
+    Should include DEMO-84 (Product Launch).
 ---
 prompt: |
-  What's the progress on epic DEMO-1?
+  What's the progress on epic DEMO-84?
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-1]
+    must_contain: [DEMO-84]
     must_not_contain: [error, "not found"]
   semantic: |
     Response should show epic progress including linked issues
@@ -79,31 +79,31 @@ expect:
     Response should show issues assigned to Jane in the current sprint.
 ---
 prompt: |
-  Add DEMO-4 to the current sprint
+  Add DEMO-87 to the current sprint
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-4, sprint]
+    must_contain: [DEMO-87, sprint]
     must_not_contain: [error, failed]
   semantic: |
-    Response should confirm DEMO-4 was added to the active sprint.
+    Response should confirm DEMO-87 was added to the active sprint.
 ---
 prompt: |
-  Set story points on DEMO-2 to 5
+  Set story points on DEMO-85 to 5
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-2, 5]
+    must_contain: [DEMO-85, 5]
     must_not_contain: [error, failed]
   semantic: |
-    Response should confirm story points were set on DEMO-2.
+    Response should confirm story points were set on DEMO-85.
 ---
 prompt: |
-  Create a story in DEMO: Implement API rate limiting, linked to epic DEMO-1, with 3 story points
+  Create a story in DEMO: Implement API rate limiting, linked to epic DEMO-84, with 3 story points
 expect:
   tools:
     must_call: [Skill]

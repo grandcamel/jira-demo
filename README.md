@@ -137,25 +137,28 @@ The demo uses a pre-configured JIRA sandbox at `jasonkrue.atlassian.net`:
 
 | Key | Type | Summary |
 |-----|------|---------|
-| DEMO-1 | Epic | Product Launch |
-| DEMO-2 | Story | User Authentication |
-| DEMO-3 | Bug | Login fails on mobile Safari |
-| DEMO-4 | Task | Update API documentation |
-| DEMO-5 | Story | Dashboard redesign |
-| DEMO-6 | Task | Performance optimization |
-| DEMO-7 | Story | Add dark mode support |
-| DEMO-8 | Bug | Search pagination bug |
-| DEMO-9 | Story | Email notification settings |
-| DEMO-10 | Task | Security audit preparation |
+| DEMO-84 | Epic | Product Launch |
+| DEMO-85 | Story | User Authentication |
+| DEMO-86 | Bug | Login fails on mobile Safari |
+| DEMO-87 | Task | Update API documentation |
+| DEMO-88 | Story | Dashboard redesign |
+| DEMO-89 | Task | Performance optimization |
+| DEMO-90 | Story | Add dark mode support |
+| DEMO-91 | Bug | Search pagination bug |
+| DEMO-92 | Story | Email notification settings |
+| DEMO-93 | Task | Security audit preparation |
 
-Seed issues DEMO-1 through DEMO-10 are preserved during cleanup. User-created issues (key > 10) are deleted between sessions.
+Seed issues are identified by the `demo` label and preserved during cleanup. User-created issues (no label) are deleted between sessions.
 
 ### DEMOSD Service Desk (JSM)
 
 | Key | Type | Summary |
 |-----|------|---------|
-| DEMOSD-1 | Get IT Help | Password reset needed |
-| DEMOSD-2 | Request Access | New laptop request |
+| DEMOSD-20 | IT help | Can't connect to VPN |
+| DEMOSD-21 | Computer support | New laptop for development |
+| DEMOSD-22 | New employee | New hire starting Monday - Alex Chen |
+| DEMOSD-23 | Travel request | Conference travel to AWS re:Invent |
+| DEMOSD-24 | Purchase over $100 | Purchase ergonomic keyboard |
 
 ### Resetting the Sandbox
 

@@ -15,16 +15,16 @@ expect:
     summaries, and status information.
 ---
 prompt: |
-  What's the status of DEMO-1?
+  What's the status of DEMO-84?
 expect:
   tools:
     must_call: [Skill]
     # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
-    must_contain: [DEMO-1]
+    must_contain: [DEMO-84]
     must_not_contain: [error, "not found", failed]
   semantic: |
-    Response should show details of DEMO-1 (Product Launch epic)
+    Response should show details of DEMO-84 (Product Launch epic)
     including status, summary, and other key fields.
 ---
 prompt: |
@@ -76,7 +76,7 @@ expect:
     must_not_contain: [error, "couldn't find"]
   semantic: |
     Response should list issues assigned to Jane Manager,
-    including DEMO-3 and DEMO-4.
+    including DEMO-86 and DEMO-87.
 ---
 prompt: |
   Assign that bug to Jane Manager
