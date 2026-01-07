@@ -1,0 +1,30 @@
+# description: List all custom fields in JIRA
+Show me all custom fields in JIRA
+---
+# description: Find Agile-related fields
+Show me all Agile-related fields
+---
+# description: Search for fields by name
+Find fields containing story in the name
+---
+# description: Check what fields are available for a project
+What fields are available for project DEMO?
+---
+# description: Check fields for a specific issue type
+What fields are available for Stories in DEMO?
+---
+# description: Check Agile field availability
+Check if Agile fields are configured for project DEMO
+---
+# description: Detect project type
+Is DEMO a team-managed or company-managed project?
+---
+# description: Preview Agile field configuration (dry-run)
+Preview configuring Agile fields for DEMO
+---
+# description: Find a specific field ID
+What is the field ID for Story Points?
+---
+# description: List all fields including system fields
+Show me all fields including system fields
+---

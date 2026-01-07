@@ -1,0 +1,36 @@
+# description: View available link types
+What link types are available in JIRA?
+---
+# description: View all links for an issue
+Show me all links for DEMO-1
+---
+# description: Create a blocks link
+Link DEMO-3 blocks DEMO-4
+---
+# description: Create a relates link
+Link DEMO-5 relates to DEMO-6
+---
+# description: Mark an issue as duplicate
+Mark DEMO-8 as a duplicate of DEMO-3
+---
+# description: View outward links only
+Show me issues that DEMO-3 blocks
+---
+# description: Find what is blocking an issue
+What is blocking DEMO-4?
+---
+# description: Find full blocker chain (recursive)
+Show me the full blocker chain for DEMO-4
+---
+# description: Clone an issue
+Clone DEMO-3 to a new issue
+---
+# description: Clone with subtasks and links
+Clone DEMO-1 including subtasks and links
+---
+# description: Preview removing links (dry-run)
+Preview removing all links from DEMO-8
+---
+# description: Get link statistics for a project
+Show link statistics for project DEMO
+---

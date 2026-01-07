@@ -126,18 +126,6 @@ What's the status of the new hire request DEMOSD-3?
 Find all travel requests in DEMOSD
 ```
 
-## What's Next?
+## Next Steps
 
-Explore freely! Try combining skills:
-
-```
-Create a bug linked to request DEMOSD-1 about the VPN configuration
-```
-
-Or ask Claude anything about your JIRA instance:
-
-```
-What projects do I have access to?
-Who's the most active contributor this week?
-Show me a summary of all open work
-```
+Try the bulk operations scenario: `cat /workspace/scenarios/bulk.md`
