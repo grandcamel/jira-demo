@@ -1,0 +1,39 @@
+# description: Log time to an issue
+Log 2 hours on DEMO-3
+---
+# description: Log time with a comment
+Log 1 hour 30 minutes on DEMO-3 with comment: Debugging authentication flow
+---
+# description: Log time for yesterday
+Log 2 hours on DEMO-3 for yesterday
+---
+# description: View all worklogs on an issue
+Show me all time logged on DEMO-3
+---
+# description: View time tracking summary
+What is the time tracking status of DEMO-3?
+---
+# description: Set original estimate
+Set the original estimate for DEMO-4 to 2 days
+---
+# description: Set remaining estimate
+Set the remaining estimate for DEMO-4 to 1 day 4 hours
+---
+# description: Log time without adjusting estimate
+Log 30 minutes on DEMO-3 without adjusting the estimate
+---
+# description: Generate personal time report
+Show me my time logged this week
+---
+# description: Project time report for the month
+Show time logged on project DEMO this month
+---
+# description: Time report grouped by day
+Show my time this week grouped by day
+---
+# description: Export timesheet to CSV
+Export time logged on DEMO last month to CSV format
+---
+# description: Preview bulk time logging (dry-run)
+Preview logging 15 minutes to DEMO-3, DEMO-4, and DEMO-5
+---

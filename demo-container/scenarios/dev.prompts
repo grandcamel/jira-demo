@@ -1,0 +1,30 @@
+# description: Generate a git branch name from an issue
+Generate a git branch name for DEMO-3
+---
+# description: Branch name with auto-prefix based on issue type
+Generate a branch name for DEMO-3 with automatic prefix based on issue type
+---
+# description: Generate a hotfix branch name
+Generate a hotfix branch name for DEMO-3
+---
+# description: Get git checkout command for an issue
+Give me the git checkout command for DEMO-3
+---
+# description: Parse commit messages for JIRA issue keys
+What JIRA issues are mentioned in: feat DEMO-123 add login feature
+---
+# description: Generate a PR description from an issue
+Generate a pull request description for DEMO-3
+---
+# description: PR description with testing checklist
+Generate a PR description for DEMO-3 with a testing checklist
+---
+# description: PR description with labels and components
+Generate a PR description for DEMO-3 including labels and components
+---
+# description: View commits linked to an issue
+Show me the commits linked to DEMO-3
+---
+# description: View detailed commit information
+Show detailed commit information for DEMO-3
+---

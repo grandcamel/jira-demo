@@ -1,0 +1,30 @@
+# description: Add a comment to track progress
+Add a comment to DEMO-3: Starting investigation of the login bug
+---
+# description: Add a formatted comment with markdown
+Add a formatted comment to DEMO-3: **Root cause found** - the issue is in the auth.validateToken function
+---
+# description: List all comments on an issue
+Show me all comments on DEMO-3
+---
+# description: Add an internal comment for admins only
+Add an internal comment to DEMO-3 visible only to Administrators: Security review needed before fix
+---
+# description: List who is watching an issue
+Who is watching DEMO-3?
+---
+# description: Add a watcher to an issue
+Add Jane Manager as a watcher on DEMO-3
+---
+# description: Remove a watcher from an issue
+Remove Jane Manager from watching DEMO-3
+---
+# description: Preview sending a notification (dry-run)
+Preview sending a notification to the assignee and reporter of DEMO-3
+---
+# description: View issue activity history
+Show me the activity history for DEMO-3
+---
+# description: Filter activity by specific fields
+Show status and assignee changes for DEMO-3
+---

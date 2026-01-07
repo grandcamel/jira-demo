@@ -125,4 +125,4 @@ Use Grafana's **time range sync** to keep all panels aligned.
 
 ## Next Steps
 
-Try the JIRA issue scenario: `cat /workspace/scenarios/issue.md`
+Try the collaboration scenario: `cat /workspace/scenarios/collaborate.md`

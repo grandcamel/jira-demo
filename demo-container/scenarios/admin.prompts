@@ -1,0 +1,33 @@
+# description: Check what permissions you have on a project
+What permissions do I have on project DEMO?
+---
+# description: Find permissions you're missing
+What permissions am I missing on DEMO?
+---
+# description: Check a specific permission (delete issues)
+Do I have permission to delete issues in DEMO?
+---
+# description: List project roles and their members
+Show me the project roles and members for DEMO
+---
+# description: View members of a specific role
+Who are the Administrators in project DEMO?
+---
+# description: Add user to a project role
+Add Jane Manager to the Developers role in DEMO
+---
+# description: Preview removing a user from a role (dry-run)
+Preview removing Jane Manager from Developers role in DEMO
+---
+# description: Remove user from a project role
+Remove Jane Manager from the Developers role in DEMO
+---
+# description: Search for users by name
+Search for users with "admin" in their name
+---
+# description: List all JIRA groups
+Show me all JIRA groups
+---
+# description: View project configuration and schemes
+Show me the configuration for project DEMO
+---

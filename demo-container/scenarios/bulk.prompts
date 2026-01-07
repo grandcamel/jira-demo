@@ -1,0 +1,27 @@
+# description: Create test issues for bulk operations
+Create 3 low priority tasks in DEMO: Cleanup task 1, Cleanup task 2, Cleanup task 3
+---
+# description: Preview bulk transition without making changes (dry-run)
+Preview moving all issues with "Cleanup" in the summary to In Progress
+---
+# description: Execute bulk transition to In Progress
+Move all issues containing "Cleanup" in DEMO to In Progress
+---
+# description: Bulk assign issues to another user
+Assign all my open tasks in DEMO to Jane Manager
+---
+# description: Preview bulk priority change
+Show me what would happen if I changed all low priority tasks in DEMO to medium
+---
+# description: Execute bulk priority change
+Change all low priority tasks in DEMO to medium priority
+---
+# description: Preview bulk delete (safety check)
+Preview deleting all issues in DEMO with "Cleanup" in the summary
+---
+# description: Execute bulk delete with confirmation
+Delete all issues in DEMO with "Cleanup" in the summary
+---
+# description: Bulk operation using JQL criteria
+Show me issues matching: project = DEMO AND status = 'To Do' AND type = Task
+---
