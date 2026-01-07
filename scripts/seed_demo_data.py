@@ -119,16 +119,33 @@ DEMO_ISSUES = [
 ]
 
 # Seed requests for DEMOSD service desk
+# Request types available: Computer support, Employee exit, IT help, New employee,
+#                          Purchase over $100, Purchase under $100, Travel request, Emailed request
 DEMOSD_REQUESTS = [
     {
-        "summary": "Password reset needed",
-        "description": "I forgot my password and can't log in. Please help!",
-        "request_type": "Get IT Help",
+        "summary": "Can't connect to VPN",
+        "description": "I'm working from home and can't connect to the corporate VPN. Getting 'connection timeout' error.",
+        "request_type": "IT help",
     },
     {
-        "summary": "New laptop request",
+        "summary": "New laptop for development",
         "description": "My current laptop is 4 years old and running very slow. Requesting a new MacBook Pro for development work.",
-        "request_type": "Request Access",
+        "request_type": "Computer support",
+    },
+    {
+        "summary": "New hire starting Monday - Alex Chen",
+        "description": "Alex Chen is joining the Engineering team on Monday. Please set up:\n- Email account\n- Slack access\n- GitHub organization access\n- JIRA account",
+        "request_type": "New employee",
+    },
+    {
+        "summary": "Conference travel to AWS re:Invent",
+        "description": "Requesting approval for travel to AWS re:Invent in Las Vegas.\n- Dates: Dec 2-6\n- Estimated cost: $2,500 (flight + hotel + registration)",
+        "request_type": "Travel request",
+    },
+    {
+        "summary": "Purchase ergonomic keyboard",
+        "description": "Requesting an ergonomic keyboard (Kinesis Advantage 360) for RSI prevention. Cost: $449",
+        "request_type": "Purchase over $100",
     },
 ]
 
