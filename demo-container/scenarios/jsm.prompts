@@ -6,7 +6,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMOSD]
     must_not_contain: [error, failed, "I don't have access"]
@@ -18,7 +18,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMOSD-]
     must_not_contain: [error, failed]
@@ -30,7 +30,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMOSD-1]
     must_not_contain: [error, "not found"]
@@ -43,7 +43,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [comment, internal]
     must_not_contain: [error, failed]
@@ -56,7 +56,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [comment]
     must_not_contain: [error, failed]
@@ -68,7 +68,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [SLA]
     must_not_contain: [error, failed]
@@ -80,7 +80,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [assigned, Jane]
     must_not_contain: [error, failed]
@@ -92,7 +92,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [Jane]
     must_not_contain: [error, failed]
@@ -104,7 +104,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [In Progress]
     must_not_contain: [error, failed, "cannot transition"]

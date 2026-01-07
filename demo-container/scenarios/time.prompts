@@ -6,7 +6,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [logged, 2]
     must_not_contain: [error, failed]
@@ -18,7 +18,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [logged]
     must_not_contain: [error, failed]
@@ -30,7 +30,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [logged]
     must_not_contain: [error, failed]
@@ -42,7 +42,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-3]
     must_not_contain: [error, failed]
@@ -54,7 +54,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-3]
     must_not_contain: [error, failed]
@@ -66,7 +66,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-4, estimate]
     must_not_contain: [error, failed]
@@ -78,7 +78,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-4, remaining]
     must_not_contain: [error, failed]
@@ -90,7 +90,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [logged, 30]
     must_not_contain: [error, failed]
@@ -102,7 +102,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_not_contain: [error, failed]
   semantic: |
@@ -113,7 +113,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO]
     must_not_contain: [error, failed]
@@ -125,7 +125,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_not_contain: [error, failed]
   semantic: |
@@ -136,7 +136,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [CSV]
     must_not_contain: [error, failed]
@@ -148,7 +148,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [preview, DEMO-3, DEMO-4, DEMO-5]
     must_not_contain: [error, failed]

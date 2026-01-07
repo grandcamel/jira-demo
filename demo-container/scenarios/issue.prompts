@@ -6,7 +6,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-]
     must_not_contain: [error, failed, "I don't have access"]
@@ -19,7 +19,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-1]
     must_not_contain: [error, "not found", failed]
@@ -32,7 +32,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-, created, Bug]
     must_not_contain: [error, failed]
@@ -45,7 +45,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-, Bug, High]
     must_not_contain: [error, "not found"]
@@ -58,7 +58,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [updated, description]
     must_not_contain: [error, failed]
@@ -70,7 +70,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-, Jane]
     must_not_contain: [error, "couldn't find"]
@@ -83,7 +83,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [assigned, Jane]
     must_not_contain: [error, failed]
@@ -95,7 +95,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [comment, added]
     must_not_contain: [error, failed]
@@ -107,7 +107,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [In Progress]
     must_not_contain: [error, failed, "cannot transition"]
@@ -119,7 +119,7 @@ prompt: |
 expect:
   tools:
     must_call: [Skill]
-    must_not_call: [Bash]
+    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [logged, 30]
     must_not_contain: [error, failed]

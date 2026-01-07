@@ -288,7 +288,8 @@ def run_text_assertions(
     text_lower = response_text.lower()
 
     for pattern in expectations.must_contain:
-        # Case-insensitive search
+        # Case-insensitive search (convert to str for YAML int patterns like "30")
+        pattern = str(pattern)
         passed = pattern.lower() in text_lower
         results.append((
             f"must_contain: '{pattern}'",
@@ -297,6 +298,7 @@ def run_text_assertions(
         ))
 
     for pattern in expectations.must_not_contain:
+        pattern = str(pattern)
         passed = pattern.lower() not in text_lower
         results.append((
             f"must_not_contain: '{pattern}'",
