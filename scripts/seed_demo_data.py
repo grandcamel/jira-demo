@@ -227,25 +227,90 @@ def create_demo_issues(client: Any, dry_run: bool = False, jane_account_id: str 
     return created_keys
 
 
+@traced("seed.get_service_desk_id")
+def get_service_desk_id(client: Any, project_key: str) -> str | None:
+    """Get the service desk ID for a project."""
+    try:
+        response = client._request("GET", "/rest/servicedeskapi/servicedesk")
+        for sd in response.get("values", []):
+            if sd.get("projectKey") == project_key:
+                return sd.get("id")
+        return None
+    except Exception as e:
+        print(f"  Warning: Could not get service desk ID: {e}")
+        return None
+
+
+@traced("seed.get_request_types")
+def get_request_types(client: Any, service_desk_id: str) -> dict[str, int]:
+    """Get request types for a service desk, returning name -> ID mapping."""
+    try:
+        response = client._request(
+            "GET", f"/rest/servicedeskapi/servicedesk/{service_desk_id}/requesttype"
+        )
+        return {rt.get("name"): rt.get("id") for rt in response.get("values", [])}
+    except Exception as e:
+        print(f"  Warning: Could not get request types: {e}")
+        return {}
+
+
 @traced("seed.create_demo_requests")
 def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
-    """Create seed requests in DEMOSD service desk."""
+    """Create seed requests in DEMOSD service desk using JSM API."""
     created_keys = []
     add_span_attribute("project.key", DEMO_SERVICE_DESK)
     add_span_attribute("dry_run", dry_run)
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating requests in {DEMO_SERVICE_DESK}...")
 
+    # Get service desk ID
+    service_desk_id = None
+    request_types = {}
+
+    if not dry_run:
+        print("  Looking up service desk...")
+        service_desk_id = get_service_desk_id(client, DEMO_SERVICE_DESK)
+        if service_desk_id:
+            print(f"  Found service desk ID: {service_desk_id}")
+            request_types = get_request_types(client, service_desk_id)
+            if request_types:
+                print(f"  Available request types: {', '.join(request_types.keys())}")
+            else:
+                print("  Warning: No request types found - using fallback issue creation")
+        else:
+            print(f"  Warning: Service desk not found for {DEMO_SERVICE_DESK} - using fallback")
+
     for request_data in DEMOSD_REQUESTS:
         summary = request_data["summary"]
+        request_type_name = request_data.get("request_type", "Get IT Help")
 
         if dry_run:
-            print(f"  Would create: {request_data['request_type']} - {summary}")
+            print(f"  Would create: {request_type_name} - {summary}")
             continue
 
+        # Try JSM API first if we have service desk info
+        if service_desk_id and request_type_name in request_types:
+            try:
+                request_type_id = request_types[request_type_name]
+                payload = {
+                    "serviceDeskId": service_desk_id,
+                    "requestTypeId": request_type_id,
+                    "requestFieldValues": {
+                        "summary": summary,
+                        "description": request_data.get("description", ""),
+                    },
+                }
+                result = client._request("POST", "/rest/servicedeskapi/request", json=payload)
+                issue_key = result.get("issueKey")
+                created_keys.append(issue_key)
+                print(f"  Created: {issue_key} - {summary} (via JSM API, type: {request_type_name})")
+                continue
+            except Exception as e:
+                print(f"  JSM API failed for {summary}: {e}")
+                print(f"  Falling back to standard issue creation...")
+
+        # Fallback to standard issue creation
         try:
-            # For JSM, we use the service desk API
-            # Note: This requires the service desk to be set up with these request types
             fields = {
                 "project": {"key": DEMO_SERVICE_DESK},
                 "summary": summary,
@@ -265,7 +330,7 @@ def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
             result = client.create_issue(fields)
             issue_key = result["key"]
             created_keys.append(issue_key)
-            print(f"  Created: {issue_key} - {summary}")
+            print(f"  Created: {issue_key} - {summary} (via standard API)")
 
         except JiraError as e:
             print(f"  Error creating {summary}: {e}")
