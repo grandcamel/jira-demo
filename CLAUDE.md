@@ -176,7 +176,10 @@ redis --> redis-exporter --> Prometheus
 
 ## Production Deployment
 
-**Domain:** `assistant-skills.dev`
+**Domains:**
+- `jira-demo.assistant-skills.dev` - JIRA demo application
+- `assistant-skills.dev` - Hub landing page (placeholder)
+
 **Droplet:** DigitalOcean `jira-demo` (143.110.131.254)
 
 SSH access: `ssh root@assistant-skills.dev`
@@ -200,6 +203,8 @@ doctl compute domain records list assistant-skills.dev
 ```
 
 **SSL certificates:** Managed by Let's Encrypt (certbot), auto-renews via cron.
+- `/etc/letsencrypt/live/assistant-skills.dev/` - root domain
+- `/etc/letsencrypt/live/jira-demo.assistant-skills.dev/` - demo subdomain
 
 **Email forwarding:** ImprovMX configured for `*@assistant-skills.dev` → forwards to admin email. Used for creating demo Atlassian accounts.
 
@@ -278,3 +283,79 @@ Automated scenario playback using expect to drive Claude through predefined prom
 - Script: `demo-container/autoplay.sh`
 
 Status: Buggy - prompt submission timing issues with Claude Code's TUI.
+
+## Claude Code Plugins
+
+### Installed Plugins
+
+**best-practices** - Development best practices for git workflow, slash commands, Docker, and secrets management. Provides guidance on:
+- Git workflow (PR branches, rebase merges, atomic commits)
+- Slash command patterns (Makefile targets over inline bash)
+- Docker Compose layering (separate prod/dev files)
+- Secrets permissions (`chmod 644` for container access)
+
+### Adding Local Plugins
+
+Claude Code plugins must be installed via marketplaces. For local plugin development:
+
+1. **Directory structure** (source paths are relative to repo root, not marketplace.json):
+   ```
+   my-plugin-repo/
+   ├── .claude-plugin/
+   │   └── marketplace.json
+   └── my-plugin/
+       ├── plugin.json
+       └── skills/
+           └── SKILL.md
+   ```
+
+2. **marketplace.json format:**
+   ```json
+   {
+     "name": "my-plugin-marketplace",
+     "owner": {
+       "name": "your-name"
+     },
+     "plugins": [
+       {
+         "name": "my-plugin",
+         "source": "./my-plugin",
+         "description": "Plugin description"
+       }
+     ]
+   }
+   ```
+
+3. **plugin.json format:**
+   ```json
+   {
+     "name": "my-plugin",
+     "version": "1.0.0",
+     "author": {
+       "name": "your-name"
+     },
+     "description": "Plugin description",
+     "skills": "./skills/"
+   }
+   ```
+
+4. **Skill files** need YAML frontmatter with description:
+   ```markdown
+   ---
+   description: When to use this skill...
+   ---
+
+   # Skill Content
+   ```
+
+5. **Install the plugin:**
+   ```bash
+   claude plugin marketplace add /path/to/my-plugin-repo
+   claude plugin install my-plugin
+   ```
+
+**Key gotchas:**
+- `source` in marketplace.json is relative to repo root, must start with `./`
+- `author` must be an object `{"name": "..."}`, not a string
+- `skills` in plugin.json is a path string, not an array
+- Skill files need YAML frontmatter with `description`
