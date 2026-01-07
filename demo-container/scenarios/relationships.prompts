@@ -1,36 +1,147 @@
-# description: View available link types
-What link types are available in JIRA?
+# Relationships Scenario - Tests jira-relationships skill
+# Issue linking and dependencies
 ---
-# description: View all links for an issue
-Show me all links for DEMO-1
+prompt: |
+  What link types are available in JIRA?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [link]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list available link types like Blocks, Relates, etc.
 ---
-# description: Create a blocks link
-Link DEMO-3 blocks DEMO-4
+prompt: |
+  Show me all links for DEMO-1
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-1]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show all issue links for DEMO-1 (epic).
 ---
-# description: Create a relates link
-Link DEMO-5 relates to DEMO-6
+prompt: |
+  Link DEMO-3 blocks DEMO-4
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3, DEMO-4, block]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm a blocking link was created.
 ---
-# description: Mark an issue as duplicate
-Mark DEMO-8 as a duplicate of DEMO-3
+prompt: |
+  Link DEMO-5 relates to DEMO-6
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-5, DEMO-6, relate]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm a relates-to link was created.
 ---
-# description: View outward links only
-Show me issues that DEMO-3 blocks
+prompt: |
+  Mark DEMO-8 as a duplicate of DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-8, DEMO-3, duplicate]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm a duplicate link was created.
 ---
-# description: Find what is blocking an issue
-What is blocking DEMO-4?
+prompt: |
+  Show me issues that DEMO-3 blocks
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show outward blocking links from DEMO-3.
 ---
-# description: Find full blocker chain (recursive)
-Show me the full blocker chain for DEMO-4
+prompt: |
+  What is blocking DEMO-4?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-4]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show issues that block DEMO-4.
 ---
-# description: Clone an issue
-Clone DEMO-3 to a new issue
+prompt: |
+  Show me the full blocker chain for DEMO-4
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-4]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show recursive blocker chain analysis.
 ---
-# description: Clone with subtasks and links
-Clone DEMO-1 including subtasks and links
+prompt: |
+  Clone DEMO-3 to a new issue
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, clone]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm issue was cloned with new issue key.
 ---
-# description: Preview removing links (dry-run)
-Preview removing all links from DEMO-8
+prompt: |
+  Clone DEMO-1 including subtasks and links
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-, clone]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm epic clone with subtasks and links.
 ---
-# description: Get link statistics for a project
-Show link statistics for project DEMO
+prompt: |
+  Preview removing all links from DEMO-8
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-8, preview]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show what links would be removed (dry-run).
+---
+prompt: |
+  Show link statistics for project DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO, link]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show link statistics and counts.
 ---

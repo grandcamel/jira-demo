@@ -1,39 +1,157 @@
-# description: Log time to an issue
-Log 2 hours on DEMO-3
+# Time Scenario - Tests jira-time skill
+# Time tracking and worklogs
 ---
-# description: Log time with a comment
-Log 1 hour 30 minutes on DEMO-3 with comment: Debugging authentication flow
+prompt: |
+  Log 2 hours on DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [logged, 2]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm 2 hours of work was logged.
 ---
-# description: Log time for yesterday
-Log 2 hours on DEMO-3 for yesterday
+prompt: |
+  Log 1 hour 30 minutes on DEMO-3 with comment: Debugging authentication flow
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [logged]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm time was logged with work description.
 ---
-# description: View all worklogs on an issue
-Show me all time logged on DEMO-3
+prompt: |
+  Log 2 hours on DEMO-3 for yesterday
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [logged]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm time was logged for the previous day.
 ---
-# description: View time tracking summary
-What is the time tracking status of DEMO-3?
+prompt: |
+  Show me all time logged on DEMO-3
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list all worklogs on the issue.
 ---
-# description: Set original estimate
-Set the original estimate for DEMO-4 to 2 days
+prompt: |
+  What is the time tracking status of DEMO-3?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-3]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show time tracking summary (original, remaining, logged).
 ---
-# description: Set remaining estimate
-Set the remaining estimate for DEMO-4 to 1 day 4 hours
+prompt: |
+  Set the original estimate for DEMO-4 to 2 days
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-4, estimate]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm original estimate was set.
 ---
-# description: Log time without adjusting estimate
-Log 30 minutes on DEMO-3 without adjusting the estimate
+prompt: |
+  Set the remaining estimate for DEMO-4 to 1 day 4 hours
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO-4, remaining]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm remaining estimate was updated.
 ---
-# description: Generate personal time report
-Show me my time logged this week
+prompt: |
+  Log 30 minutes on DEMO-3 without adjusting the estimate
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [logged, 30]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm time logged without estimate adjustment.
 ---
-# description: Project time report for the month
-Show time logged on project DEMO this month
+prompt: |
+  Show me my time logged this week
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show personal timesheet for the current week.
 ---
-# description: Time report grouped by day
-Show my time this week grouped by day
+prompt: |
+  Show time logged on project DEMO this month
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show project time report for the month.
 ---
-# description: Export timesheet to CSV
-Export time logged on DEMO last month to CSV format
+prompt: |
+  Show my time this week grouped by day
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show daily breakdown of time logged.
 ---
-# description: Preview bulk time logging (dry-run)
-Preview logging 15 minutes to DEMO-3, DEMO-4, and DEMO-5
+prompt: |
+  Export time logged on DEMO last month to CSV format
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [CSV]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should provide CSV-formatted time data.
+---
+prompt: |
+  Preview logging 15 minutes to DEMO-3, DEMO-4, and DEMO-5
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [preview, DEMO-3, DEMO-4, DEMO-5]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should preview bulk time logging (dry-run).
 ---

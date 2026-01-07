@@ -1,30 +1,123 @@
-# description: List all custom fields in JIRA
-Show me all custom fields in JIRA
+# Fields Scenario - Tests jira-fields skill
+# Custom field management
 ---
-# description: Find Agile-related fields
-Show me all Agile-related fields
+prompt: |
+  Show me all custom fields in JIRA
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [field]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list custom fields with their names and IDs.
 ---
-# description: Search for fields by name
-Find fields containing story in the name
+prompt: |
+  Show me all Agile-related fields
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [field]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list Agile fields like Story Points, Sprint, etc.
 ---
-# description: Check what fields are available for a project
-What fields are available for project DEMO?
+prompt: |
+  Find fields containing story in the name
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Story]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list fields with "story" in the name.
 ---
-# description: Check fields for a specific issue type
-What fields are available for Stories in DEMO?
+prompt: |
+  What fields are available for project DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [field]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list fields configured for the DEMO project.
 ---
-# description: Check Agile field availability
-Check if Agile fields are configured for project DEMO
+prompt: |
+  What fields are available for Stories in DEMO?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Story, field]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list fields available for the Story issue type.
 ---
-# description: Detect project type
-Is DEMO a team-managed or company-managed project?
+prompt: |
+  Check if Agile fields are configured for project DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Agile]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should indicate Agile field configuration status.
 ---
-# description: Preview Agile field configuration (dry-run)
-Preview configuring Agile fields for DEMO
+prompt: |
+  Is DEMO a team-managed or company-managed project?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [DEMO]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should identify the project type (team-managed or company-managed).
 ---
-# description: Find a specific field ID
-What is the field ID for Story Points?
+prompt: |
+  Preview configuring Agile fields for DEMO
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [preview, Agile]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show what would be configured (dry-run).
 ---
-# description: List all fields including system fields
-Show me all fields including system fields
+prompt: |
+  What is the field ID for Story Points?
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [Story Points]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should show the field ID for Story Points custom field.
+---
+prompt: |
+  Show me all fields including system fields
+expect:
+  tools:
+    must_call: [Skill]
+    must_not_call: [Bash]
+  text:
+    must_contain: [field]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should list both system and custom fields.
 ---
