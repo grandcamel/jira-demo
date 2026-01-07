@@ -853,6 +853,9 @@ async function startSession(ws, client) {
       '-e', `JIRA_SITE_URL=${process.env.JIRA_SITE_URL}`,
       '-e', `SESSION_TIMEOUT_MINUTES=${SESSION_TIMEOUT_MINUTES}`,
       '-e', `ENABLE_AUTOPLAY=${process.env.ENABLE_AUTOPLAY || 'false'}`,
+      '-e', `AUTOPLAY_DEBUG=${process.env.AUTOPLAY_DEBUG || 'false'}`,
+      '-e', `AUTOPLAY_SHOW_TOOLS=${process.env.AUTOPLAY_SHOW_TOOLS || 'false'}`,
+      '-e', `OTEL_ENDPOINT=${process.env.OTEL_ENDPOINT || ''}`,
       '-v', `${CLAUDE_CREDENTIALS_PATH}:/home/devuser/.claude/.credentials.json:ro`,
       '-v', `${CLAUDE_CONFIG_PATH}:/tmp/.claude.json.source:ro`,
       'jira-demo-container:latest'
