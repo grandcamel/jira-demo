@@ -45,3 +45,9 @@ Thumbs.db
 
 # SSL certs (managed separately)
 certs/
+
+# Generated test artifacts
+PLAN-*.md
+
+# Playwright MCP cache
+.playwright-mcp/
