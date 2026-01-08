@@ -24,7 +24,7 @@ make reset-sandbox                    # Reset JIRA sandbox
 
 ## Key Constraints
 
-- **Git workflow**: Never push to `main`. Always create PR branch, rebase merge only.
+- **Git workflow**: Never push to `main`. Always create PR branch, rebase merge only. Delete branches after merge.
 - **Secrets**: Never commit `secrets/`. Use env vars for JIRA credentials.
 - **Seed issues**: Identified by `demo` label. User issues (no label) deleted on cleanup.
 - **Slash commands**: Prefer Makefile targets over inline bash.
