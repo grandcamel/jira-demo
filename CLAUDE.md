@@ -57,6 +57,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Mock client API parity**: Mock client methods must match real `JiraClient` signatures exactly. Common miss: `search_issues()` needs `next_page_token` parameter. Error pattern: `TypeError: MockJiraClientBase.search_issues() got an unexpected keyword argument 'next_page_token'`. Fix in `mock/base.py`, not config_manager.
 - **Test scripts directly first**: Before running full `make test-skill-mock-dev`, test the skill script directly to get clearer errors. See "Mock Mode Debugging" section below.
 - **Mock activation vs mock errors**: Different failure patterns: (1) Mock not activating = credential validation errors + Bash cascade. (2) Mock activated but incomplete = `TypeError` on mock methods. Verify activation first with quick Python test.
+- **jira CLI not installed in container**: SKILL.md files say "use `jira search query`" but `jira` CLI requires `jira-assistant-skills` package. Container only installs `jira-assistant-skills-lib` (library). Fix: add `pip install -e /path/to/plugin` to install CLI, or update SKILL.md to use Python scripts directly.
+- **Skill cascade pattern**: When Claude calls a Skill and the instructed command fails (e.g., `jira` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic.
 
 ## Architecture
 
@@ -219,6 +221,16 @@ print(f\"Client type: {type(get_jira_client()).__name__}\")
 # Expected: is_mock_mode(): True, Client type: MockJiraClient
 ```
 
+**Step 1b: Verify jira CLI is available**
+```bash
+docker run --rm \
+    -v $JIRA_PLUGIN_PATH:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
+    --entrypoint bash jira-demo-container:latest \
+    -c "pip install -q -e /home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev && which jira && jira --help | head -5"
+# Expected: /path/to/jira, followed by help text
+# If "jira not found": SKILL.md commands will fail, causing cascade
+```
+
 **Step 2: Test skill script directly**
 ```bash
 docker run --rm -e JIRA_MOCK_MODE=true \
@@ -244,6 +256,8 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 | `ValidationError: JIRA URL not configured` | Mock not activating | Check `get_jira_client()` has `is_mock_mode()` check |
 | `TypeError: got unexpected keyword argument` | Mock API incomplete | Add missing parameter to mock method |
 | Tools: `['Skill', 'Bash', 'Bash', ...]` | Credential cascade | Mock working but Claude exploring; skill description issue |
+| `jira: command not found` | CLI not installed | `pip install -e /path/to/plugin` to get `jira` CLI |
+| Skill → setup → Bash exploration | CLI command failed | Check `which jira`; install plugin package if missing |
 
 ## Level 2 Reference
 
