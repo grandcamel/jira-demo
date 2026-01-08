@@ -1,6 +1,6 @@
 .PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
-	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev refine-skill
+	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -229,12 +229,19 @@ test-skill:
 # Usage: make test-skill-dev SCENARIO=search
 #        make test-skill-dev SCENARIO=search PROMPT_INDEX=0  # Single prompt for fast iteration
 #        make test-skill-dev SCENARIO=search FIX_CONTEXT=1   # Output fix context JSON
+#        make test-skill-dev SCENARIO=search CONVERSATION=1  # Multi-prompt conversation mode
+#        make test-skill-dev SCENARIO=search CONVERSATION=1 FAIL_FAST=1  # Stop on first failure
+#        make test-skill-dev SCENARIO=search FORK_FROM=0     # Fork from checkpoint after prompt 0
 JIRA_SKILLS_PATH ?= /Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills
 JIRA_PLUGIN_PATH = $(JIRA_SKILLS_PATH)/plugins/jira-assistant-skills
 JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib
+# Session persistence directories for fork feature
+CLAUDE_SESSIONS_DIR ?= /tmp/claude-sessions
+CHECKPOINTS_DIR ?= /tmp/checkpoints
 test-skill-dev:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-dev SCENARIO=<name> [PROMPT_INDEX=N] [FIX_CONTEXT=1]"; exit 1; fi
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
 	@docker run --rm \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
@@ -243,6 +250,8 @@ test-skill-dev:
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
+		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
+		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
 		--entrypoint bash \
 		jira-demo-container:latest \
 		-c "pip install -q -e /opt/jira-lib 2>/dev/null; \
@@ -254,7 +263,60 @@ test-skill-dev:
 		    $(if $(VERBOSE),--verbose,) \
 		    $(if $(JSON),--json,) \
 		    $(if $(PROMPT_INDEX),--prompt-index $(PROMPT_INDEX),) \
+		    $(if $(CONVERSATION),--conversation,) \
+		    $(if $(FAIL_FAST),--fail-fast,) \
+		    $(if $(CONVERSATION),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json,) \
+		    $(if $(FORK_FROM),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json --fork-from $(FORK_FROM),) \
 		    $(if $(FIX_CONTEXT),--fix-context $(JIRA_SKILLS_PATH),)"
+
+# Run skill test with mocked JIRA API (fast, deterministic)
+# Usage: make test-skill-mock SCENARIO=search
+test-skill-mock:
+	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-mock SCENARIO=<name> [MODEL=sonnet] [JUDGE_MODEL=haiku]"; exit 1; fi
+	docker run --rm \
+		-e JIRA_MOCK_MODE=true \
+		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		jira-demo-container:latest \
+		python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
+			--model $(or $(MODEL),sonnet) \
+			--judge-model $(or $(JUDGE_MODEL),haiku) \
+			--mock \
+			$(if $(VERBOSE),--verbose,) \
+			$(if $(JSON),--json,)
+
+# Fast dev iteration with mocks and local source mounts
+# Usage: make test-skill-mock-dev SCENARIO=search
+#        make test-skill-mock-dev SCENARIO=search CONVERSATION=1  # Multi-prompt conversation mode
+#        make test-skill-mock-dev SCENARIO=search FORK_FROM=0     # Fork from checkpoint after prompt 0
+test-skill-mock-dev:
+	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-mock-dev SCENARIO=<name> [PROMPT_INDEX=N]"; exit 1; fi
+	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
+	@docker run --rm \
+		-e JIRA_MOCK_MODE=true \
+		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
+		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
+		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
+		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
+		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
+		--entrypoint bash \
+		jira-demo-container:latest \
+		-c "pip install -q -e /opt/jira-lib 2>/dev/null; \
+		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
+		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
+		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
+		    --model $(or $(MODEL),sonnet) \
+		    --judge-model $(or $(JUDGE_MODEL),haiku) \
+		    --mock \
+		    $(if $(VERBOSE),--verbose,) \
+		    $(if $(JSON),--json,) \
+		    $(if $(PROMPT_INDEX),--prompt-index $(PROMPT_INDEX),) \
+		    $(if $(CONVERSATION),--conversation,) \
+		    $(if $(FAIL_FAST),--fail-fast,) \
+		    $(if $(CONVERSATION),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json,) \
+		    $(if $(FORK_FROM),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json --fork-from $(FORK_FROM),)"
 
 # Skill refinement loop - iteratively test and fix skills
 # Usage: make refine-skill SCENARIO=search MAX_ATTEMPTS=3
@@ -309,6 +371,8 @@ help:
 	@echo "  make test-skill SCENARIO=search       - Run skill test with assertions"
 	@echo "  make test-skill-dev SCENARIO=search   - Fast test with local source mounts"
 	@echo "  make test-skill-dev SCENARIO=search PROMPT_INDEX=0 - Test single prompt"
+	@echo "  make test-skill-mock SCENARIO=search  - Run with mocked JIRA API (fast)"
+	@echo "  make test-skill-mock-dev SCENARIO=search - Mock + local source mounts"
 	@echo "  make refine-skill SCENARIO=search     - Iterative test+fix loop"
 	@echo ""
 	@echo "Maintenance:"
