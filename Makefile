@@ -266,6 +266,7 @@ test-skill-dev:
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
 		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
+		-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro \
 		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
 		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
 		--entrypoint bash \
@@ -322,6 +323,7 @@ test-skill-mock-dev:
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
 		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
+		-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro \
 		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
 		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
 		--entrypoint bash \
