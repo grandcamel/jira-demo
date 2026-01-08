@@ -1,0 +1,19 @@
+# Fail Test - 3 prompts, third one fails without context
+---
+prompt: |
+  What is 2 + 2?
+expect:
+  text:
+    must_contain: ["4"]
+---
+prompt: |
+  Add 1 to the previous answer.
+expect:
+  text:
+    must_contain: ["5"]
+---
+prompt: |
+  Multiply the previous answer by 10.
+expect:
+  text:
+    must_contain: ["50"]

@@ -1,0 +1,14 @@
+# Mock API Test - Single prompt to verify mock mode is working
+# Usage: make test-skill-mock SCENARIO=mock-test
+---
+prompt: |
+  Show me the details of DEMO-84
+expect:
+  tools:
+    must_call: [Skill]
+  text:
+    must_contain: [DEMO-84, Product Launch, Epic]
+    must_not_contain: [error, failed, "not found"]
+  semantic: |
+    Response should show DEMO-84 details including summary "Product Launch"
+    and issue type "Epic". This verifies the mock API is returning data.
