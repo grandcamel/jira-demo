@@ -702,6 +702,19 @@ def interpolate_prompt(prompt: str, variables: dict[str, str]) -> str:
 
 JUDGE_PROMPT_TEMPLATE = """You are evaluating Claude's response quality for a JIRA automation skill test.
 
+## How Claude Code Skills Work (CRITICAL CONTEXT)
+
+Claude Code skills are CONTEXT-LOADING mechanisms, NOT direct executors:
+1. **Skill tool** loads SKILL.md content into Claude's context (instructions, examples, CLI commands)
+2. **Bash tool** executes the `jira` CLI commands described in the skill
+
+The pattern `['Skill', 'Bash']` is CORRECT and EXPECTED for any JIRA operation:
+- First operation in conversation: `['Skill', 'Bash']` - Skill loads context, Bash runs CLI
+- Subsequent operations: `['Bash']` only - context already loaded
+- Knowledge-only question: `['Skill']` only - no CLI execution needed
+
+DO NOT penalize for using Bash after Skill - this is the intended design pattern.
+
 ## Expected Behavior
 {semantic}
 
@@ -709,6 +722,12 @@ JUDGE_PROMPT_TEMPLATE = """You are evaluating Claude's response quality for a JI
 Expected to call: {must_call}
 Expected NOT to call: {must_not_call}
 Actually called: {tools_called}
+
+**Tool evaluation guidance:**
+- `['Skill', 'Bash']` when Skill is expected = CORRECT (Bash executes the CLI)
+- `['Skill']` only when CLI execution expected = PARTIAL (missing execution)
+- `['Bash']` without `['Skill']` on first call = PARTIAL (should load skill first)
+- Multiple `['Skill']` calls in sequence = PARTIAL (skill should only load once)
 
 ## Actual Response
 {response_text}
@@ -722,18 +741,18 @@ Must not contain (results): {must_not_contain_results}
 Evaluate the response and provide:
 
 1. **quality**: Rate overall quality
-   - "high": Correct tools, accurate information, clear formatting, meets semantic expectations
-   - "medium": Mostly correct but minor issues (extra tools, verbose, slight formatting issues)
+   - "high": Correct tools (Skill→Bash pattern), accurate information, clear formatting, meets semantic expectations
+   - "medium": Mostly correct but minor issues (extra unnecessary tools, verbose, slight formatting issues)
    - "low": Wrong tools, missing information, errors, hallucinations, or doesn't meet expectations
 
 2. **tool_accuracy**: Rate tool usage
-   - "correct": Used exactly the right tools
+   - "correct": Used exactly the right tools (Skill→Bash for first CLI operation is correct)
    - "partial": Used some right tools but also wrong ones, or missed some
    - "wrong": Used completely wrong tools
 
 3. **reasoning**: Brief explanation of your rating
 
-4. **refinement_suggestion**: If quality < high, suggest how to improve the SKILL (not the prompt) to get better results. Focus on skill descriptions, tool selection guidance, or missing capabilities.
+4. **refinement_suggestion**: If quality < high, suggest how to improve the SKILL (not the prompt) to get better results. Focus on skill descriptions, CLI command examples, or missing capabilities. Do NOT suggest removing Bash usage - that's the expected pattern.
 
 5. **expectation_suggestion**: If the expectations themselves seem wrong or too strict/lenient, suggest how to adjust them.
 
