@@ -48,13 +48,13 @@
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `test_complete`",
+          "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `test_complete` [$__range]))",
           "refId": "A"
         }
       ],
@@ -80,13 +80,13 @@
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `high`",
+          "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `high` [$__range]))",
           "refId": "A"
         }
       ],
@@ -112,13 +112,13 @@
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `medium`",
+          "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `medium` [$__range]))",
           "refId": "A"
         }
       ],
@@ -144,13 +144,13 @@
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `low`",
+          "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `low` [$__range]))",
           "refId": "A"
         }
       ],
@@ -176,13 +176,13 @@
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} | json | level = `error`",
+          "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} | json | level = `error` [$__range]))",
           "refId": "A"
         }
       ],
@@ -208,13 +208,13 @@
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `prompt_complete`",
+          "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `prompt_complete` [$__range]))",
           "refId": "A"
         }
       ],
