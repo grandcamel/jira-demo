@@ -129,12 +129,13 @@ show_menu() {
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                    JIRA Assistant Demo                        ║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}1)${NC} View Scenarios                                            ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}2)${NC} Start Claude (interactive mode)                          ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  ${GREEN}3)${NC} Start Bash Shell                                         ${CYAN}║${NC}"
     if [ "${ENABLE_AUTOPLAY:-false}" = "true" ]; then
-        echo -e "${CYAN}║${NC}  ${GREEN}4)${NC} Auto-play Scenario ${YELLOW}(watch a live demo)${NC}                   ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${GREEN}1)${NC} Auto-play Scenario ${YELLOW}(watch a live demo)${NC}                   ${CYAN}║${NC}"
+        echo -e "${CYAN}║${NC}  ${GREEN}2)${NC} Run Scenario ${YELLOW}(Mock API - no JIRA calls)${NC}                  ${CYAN}║${NC}"
     fi
+    echo -e "${CYAN}║${NC}  ${GREEN}3)${NC} View Scenarios                                            ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}4)${NC} Start Claude (interactive mode)                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}5)${NC} Start Bash Shell                                         ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}q)${NC} Exit                                                     ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
@@ -212,6 +213,36 @@ autoplay_loop() {
     done
 }
 
+show_mock_menu() {
+    echo ""
+    echo -e "${CYAN}Run Scenario with Mock API:${NC}"
+    echo -e "${YELLOW}(Uses simulated JIRA responses - no real API calls)${NC}"
+    echo ""
+    echo -e "  ${GREEN}1)${NC} Issue Management  - Create, update, transition issues"
+    echo -e "  ${GREEN}2)${NC} Search & JQL      - Find issues using natural language"
+    echo -e "  ${GREEN}3)${NC} Agile Workflows   - Sprints, epics, story points"
+    echo -e "  ${GREEN}4)${NC} Service Desk      - JSM requests and comments"
+    echo -e "  ${GREEN}b)${NC} Back to main menu"
+    echo ""
+}
+
+mock_loop() {
+    while true; do
+        clear
+        cat /etc/motd
+        show_mock_menu
+        read -rp "Select scenario to run with mock API: " choice
+        case $choice in
+            1) JIRA_MOCK_MODE=true /workspace/autoplay.sh issue || true ;;
+            2) JIRA_MOCK_MODE=true /workspace/autoplay.sh search || true ;;
+            3) JIRA_MOCK_MODE=true /workspace/autoplay.sh agile || true ;;
+            4) JIRA_MOCK_MODE=true /workspace/autoplay.sh jsm || true ;;
+            b|B) return ;;
+            *) echo -e "${YELLOW}Invalid option${NC}"; sleep 1 ;;
+        esac
+    done
+}
+
 main_menu_loop() {
     while true; do
         clear
@@ -220,9 +251,25 @@ main_menu_loop() {
         read -rp "Select option: " choice
         case $choice in
             1)
-                scenarios_loop
+                if [ "${ENABLE_AUTOPLAY:-false}" = "true" ]; then
+                    autoplay_loop
+                else
+                    echo -e "${YELLOW}Invalid option${NC}"
+                    sleep 1
+                fi
                 ;;
             2)
+                if [ "${ENABLE_AUTOPLAY:-false}" = "true" ]; then
+                    mock_loop
+                else
+                    echo -e "${YELLOW}Invalid option${NC}"
+                    sleep 1
+                fi
+                ;;
+            3)
+                scenarios_loop
+                ;;
+            4)
                 clear
                 echo -e "${GREEN}Starting Claude in interactive mode...${NC}"
                 echo -e "${YELLOW}Tip: Type 'exit' or press Ctrl+C to return to menu${NC}"
@@ -235,7 +282,7 @@ main_menu_loop() {
                     claude --dangerously-skip-permissions "Hello, JIRA!" || true
                 fi
                 ;;
-            3)
+            5)
                 clear
                 echo -e "${GREEN}Starting Bash shell...${NC}"
                 echo -e "${YELLOW}Tip: Type 'exit' to return to menu${NC}"
@@ -246,14 +293,6 @@ main_menu_loop() {
                 fi
                 echo ""
                 /bin/bash -l || true
-                ;;
-            4)
-                if [ "${ENABLE_AUTOPLAY:-false}" = "true" ]; then
-                    autoplay_loop
-                else
-                    echo -e "${YELLOW}Invalid option${NC}"
-                    sleep 1
-                fi
                 ;;
             q|Q)
                 echo -e "${GREEN}Goodbye! Thanks for trying JIRA Assistant Skills.${NC}"
