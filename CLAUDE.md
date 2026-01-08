@@ -34,7 +34,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **OAuth token expires**: Run `make check-token` before skill tests. If expired, run `/refresh-token`.
 - **JIRA keys auto-increment**: Reseeding creates new keys (DEMO-84+), not DEMO-1. Prompts must use current keys.
 - **Rebuild after prompt changes**: Container caches scenarios. Run `make build` after editing `.prompts` files.
-- **Prompts run independently**: No conversation context between prompts. Use explicit issue keys, not "that bug".
+- **Prompts run independently**: No conversation context between prompts. Use explicit issue keys, not "that bug". Use `CONVERSATION=1` for multi-prompt context. Add `FAIL_FAST=1` to stop on first failure.
+- **Session forking**: Use `--resume <session-id> --fork-session` to fork from a checkpoint (not `--continue --session-id`). Sessions persist in `~/.claude/projects/`.
 - **YAML parses numbers**: `must_contain: [30]` becomes int. Code must handle with `str(pattern)`.
 - **OTEL traces need flush**: Python scripts must call `force_flush()` before exit or traces won't be sent to Tempo.
 - **Tempo query port**: Port 3200 must be exposed in docker-compose.dev.yml to query traces via API.
@@ -62,6 +63,10 @@ nginx --> queue-manager --> ttyd --> demo-container
 | Reset sandbox | `make reset-sandbox` |
 | Run scenario | `make run-scenario SCENARIO=search` |
 | Test skills | `make test-skill-dev SCENARIO=search` |
+| Test with context | `make test-skill-dev SCENARIO=search CONVERSATION=1` |
+| Test with fail-fast | `make test-skill-dev SCENARIO=search CONVERSATION=1 FAIL_FAST=1` |
+| Fork from checkpoint | `make test-skill-dev SCENARIO=search FORK_FROM=0 PROMPT_INDEX=1` |
+| Test with mock API | `make test-skill-mock-dev SCENARIO=search` |
 | Refine skills | `make refine-skill SCENARIO=search` |
 | Shell access | `make shell-queue` / `make shell-demo` |
 
@@ -81,6 +86,26 @@ gh pr merge --rebase --delete-branch
 **Logs**: Query Loki with `{job="autoplay"}`, `{job="skill-test"}`, or `{job="nginx"}`
 
 **Traces**: Spans prefixed `cleanup.*`, `seed.*`, `skill_test.*`, `claude.*` in Tempo
+
+## Skill Test Iteration Workflow
+
+Fast iteration on multi-prompt scenarios without replaying all prompts:
+
+```bash
+# Step 1: Run full scenario to build checkpoints (stops on first failure)
+make test-skill-dev SCENARIO=issue CONVERSATION=1 FAIL_FAST=1
+# Creates /tmp/checkpoints/issue.json with session IDs for each prompt
+
+# Step 2: If prompt 7 (index 6) fails, iterate on just that prompt
+make test-skill-dev SCENARIO=issue FORK_FROM=5 PROMPT_INDEX=6
+# Forks from checkpoint 5 (state after prompt 6 passed), runs only prompt 7
+```
+
+**Key details:**
+- Prompts are 0-indexed: prompt 7 = PROMPT_INDEX=6, fork after prompt 6 = FORK_FROM=5
+- Tests run all prompts by default; use `FAIL_FAST=1` to stop early
+- Sessions persist in `/tmp/claude-sessions/` across container runs
+- Each fork creates a new session ID (doesn't corrupt the checkpoint)
 
 ## Level 2 Reference
 
