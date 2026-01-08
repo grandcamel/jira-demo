@@ -44,9 +44,10 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Container telemetry network**: Standalone containers use external `demo-telemetry-network`. Created by `make dev`. See "Parallel Container Telemetry" section.
 - **LGTM Grafana provisioning path**: The LGTM image uses `/otel-lgtm/grafana/conf/provisioning/dashboards/`, NOT `/etc/grafana/provisioning/`. Mount dashboard configs there.
 - **Grafana direct dev access**: To access Grafana directly on port 3001 (bypassing nginx), set `GF_SERVER_ROOT_URL=http://localhost:3001/` and `GF_SERVER_SERVE_FROM_SUB_PATH=false` in docker-compose.dev.yml.
+- **Dashboard reload requires container restart**: After editing dashboard JSON in `observability/dashboards/`, run `docker restart jira-demo-lgtm` to reload. Grafana's provisioning reload API is not available in the LGTM image.
 - **Loki stat panel queries**: Plain log queries with `count` reduction don't work for stat panels. Use metric queries: `sum by () (count_over_time({job="skill-test"} |= \`event\` [$__range]))`.
 - **LogQL JSON field filtering**: Use backticks for string values: `| json | quality = \`high\``. Without backticks, Loki treats it as a label reference.
-- **Duplicate logs inflate counts**: If stat panels show inflated counts (~60x expected), logs may be duplicated in Loki. Use `sum by (field)` to aggregate correctly.
+- **Stat panel query type**: Grafana executes Loki metric queries as range queries by default, evaluating at multiple timestamps with overlapping windows. This causes stat panels to show ~60-100x inflated counts. Fix: add `"queryType": "instant"` to stat panel targets in dashboard JSON. Validate with direct Loki query: `curl 'http://localhost:3100/loki/api/v1/query' --data-urlencode 'query=sum(count_over_time({job="skill-test"} |= \`test_complete\` [1h]))'`.
 - **Skill routing failures**: Common test failure pattern: jira-assistant hub routes to `jira-assistant-setup` instead of specific skills (`jira-search`, `jira-issue`, `jira-fields`). Check skill descriptions and routing logic.
 - **Plugin cache embeds library copies**: The container's Claude plugin cache (`~/.claude/plugins/cache/jira-assistant-skills/.../skills/shared/scripts/lib/`) contains its **own embedded copy** of `jira-assistant-skills-lib`. Changes to the standalone lib repo don't affect the plugin until: (1) lib PR merged, (2) plugin updated to use new lib, (3) plugin published to GitHub, (4) container rebuilt.
 - **Library changes need plugin update**: Changes to `jira-assistant-skills-lib` source aren't picked up by `make build` alone. The plugin pulls from GitHub, which has its own bundled library. To test lib changes: mount patched files into container or update the plugin's embedded lib.
@@ -130,6 +131,20 @@ gh pr merge --rebase --delete-branch
 - Direct trace links to Tempo
 - Raw log viewer with level filtering
 - Dashboard links to other dashboards in header
+
+**Validate dashboard against raw telemetry:**
+```bash
+# Count test_complete events (should match "Test Runs" stat panel)
+curl -s 'http://localhost:3100/loki/api/v1/query' \
+  --data-urlencode 'query=sum(count_over_time({job="skill-test"} |= `test_complete` [1h]))' | jq '.data.result[0].value[1]'
+
+# Count by quality (should match High/Medium/Low panels)
+curl -s 'http://localhost:3100/loki/api/v1/query' \
+  --data-urlencode 'query=sum(count_over_time({job="skill-test"} |= `judge_complete` | json | quality = `low` [1h]))' | jq '.data.result[0].value[1]'
+
+# List available label values
+curl -s 'http://localhost:3100/loki/api/v1/label/scenario/values' | jq '.data'
+```
 
 ## Parallel Container Telemetry
 
