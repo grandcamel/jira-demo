@@ -63,6 +63,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Skill cascade on failure**: When Claude calls a Skill and the subsequent Bash command fails (e.g., `jira` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic. Note: `Skill → Bash` is the CORRECT pattern (see below); only failure cascades are problematic.
 - **skill-test.py baked into container**: The `skill-test.py` is copied into the container image at build time. Changes to `demo-container/skill-test.py` require either `make build` OR mounting the local file. Makefile dev targets now mount it automatically: `-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro`.
 - **Judge needs skill execution context**: The LLM judge evaluates tool usage. Without context about how Claude Code skills work (`Skill → Bash` pattern), it will incorrectly penalize Bash usage as "extra tools". The judge prompt in `skill-test.py` includes this context - don't remove it.
+- **Conversation mode context reuse**: In `CONVERSATION=1` mode, Claude may answer from context instead of re-calling CLI when data is already available. Example: After listing issues, "What's the status of DEMO-84?" may be answered from context without Bash. This causes tool expectation failures even when responses are correct. Design prompts to require fresh data or accept context reuse as valid.
+- **Scenario tool expectations pattern**: For conversation mode scenarios, first prompt should `must_call: [Skill]`, subsequent prompts should `must_call: [Bash]`. The scenarios directory is mounted in dev targets for iteration without rebuild.
 
 ## How Claude Code Skills Work
 

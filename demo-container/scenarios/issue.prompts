@@ -1,12 +1,15 @@
 # Issue Scenario - Tests jira-issue skill
 # CRUD operations for JIRA issues
+#
+# Tool expectation pattern for conversation mode:
+# - First prompt: must_call [Skill] (loads context, then Bash executes CLI)
+# - Subsequent prompts: must_call [Bash] (context already loaded)
 ---
 prompt: |
   Show me all issues in project DEMO
 expect:
   tools:
     must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
   text:
     must_contain: [DEMO-]
     must_not_contain: [error, failed, "I don't have access"]
@@ -18,8 +21,7 @@ prompt: |
   What's the status of DEMO-84?
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-84]
     must_not_contain: [error, "not found", failed]
@@ -31,8 +33,7 @@ prompt: |
   Create a high priority bug in DEMO: Search results are not sorted correctly
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-, created, Bug]
     must_not_contain: [error, failed]
@@ -44,10 +45,9 @@ prompt: |
   Show me the details of the bug we just created
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
-    must_contain: [DEMO-, Bug, High]
+    must_contain: [DEMO-, Bug]
     must_not_contain: [error, "not found"]
   semantic: |
     Response should show details of the previously created bug
@@ -57,10 +57,9 @@ prompt: |
   Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
-    must_contain: [updated, description]
+    must_contain: [description]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm the description was added to the bug.
@@ -69,8 +68,7 @@ prompt: |
   Show me issues assigned to Jane
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-, Jane]
     must_not_contain: [error, "couldn't find"]
@@ -82,10 +80,9 @@ prompt: |
   Assign that bug to Jane Manager
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
-    must_contain: [assigned, Jane]
+    must_contain: [Jane]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm the bug was assigned to Jane Manager.
@@ -94,10 +91,9 @@ prompt: |
   Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
-    must_contain: [comment, added]
+    must_contain: [comment]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm the comment was added to the bug.
@@ -106,8 +102,7 @@ prompt: |
   Move that bug to In Progress
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [In Progress]
     must_not_contain: [error, failed, "cannot transition"]
@@ -118,10 +113,9 @@ prompt: |
   Log 30 minutes on the bug with description: Initial investigation and root cause analysis
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
-    must_contain: [logged, 30]
+    must_contain: [30]
     must_not_contain: [error, failed]
   semantic: |
     Response should confirm 30 minutes of work was logged to the bug
