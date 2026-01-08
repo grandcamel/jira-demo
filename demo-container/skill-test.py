@@ -16,6 +16,20 @@ Usage:
     python skill-test.py scenarios/search.prompts --model sonnet --judge-model haiku
     python skill-test.py scenarios/search.prompts --verbose
     python skill-test.py scenarios/search.prompts --no-debug  # Disable telemetry
+    python skill-test.py scenarios/search.prompts --mock      # Use mocked JIRA API
+
+Fast Iteration with Checkpoints:
+    # Step 1: Run full scenario to create checkpoints
+    python skill-test.py scenarios/issue.prompts --checkpoint-file /tmp/issue.json
+
+    # Step 2: List available checkpoints
+    python skill-test.py scenarios/issue.prompts --checkpoint-file /tmp/issue.json --list-checkpoints
+
+    # Step 3: Iterate on prompt 3 by forking from prompt 2's checkpoint
+    python skill-test.py scenarios/issue.prompts --checkpoint-file /tmp/issue.json \\
+        --prompt-index 3 --fork-from 2
+
+    This skips replaying prompts 0-2, instantly resuming from the saved session state.
 """
 
 import argparse
@@ -206,6 +220,53 @@ def trace_span(
 
 
 # =============================================================================
+# Session Checkpoints
+# =============================================================================
+
+
+def save_checkpoint(checkpoint_file: Path, prompt_index: int, session_id: str) -> None:
+    """Save a session checkpoint after a prompt completes."""
+    checkpoints = {}
+    if checkpoint_file.exists():
+        try:
+            with open(checkpoint_file, "r") as f:
+                checkpoints = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            checkpoints = {}
+
+    checkpoints[str(prompt_index)] = session_id
+
+    with open(checkpoint_file, "w") as f:
+        json.dump(checkpoints, f, indent=2)
+
+
+def load_checkpoint(checkpoint_file: Path, prompt_index: int) -> str | None:
+    """Load a session checkpoint for a specific prompt index."""
+    if not checkpoint_file.exists():
+        return None
+
+    try:
+        with open(checkpoint_file, "r") as f:
+            checkpoints = json.load(f)
+        return checkpoints.get(str(prompt_index))
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
+def list_checkpoints(checkpoint_file: Path) -> dict[int, str]:
+    """List all available checkpoints."""
+    if not checkpoint_file.exists():
+        return {}
+
+    try:
+        with open(checkpoint_file, "r") as f:
+            checkpoints = json.load(f)
+        return {int(k): v for k, v in checkpoints.items()}
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+# =============================================================================
 # Data Classes
 # =============================================================================
 
@@ -340,15 +401,20 @@ def run_claude_prompt(
     verbose: bool = False,
     prompt_index: int = 0,
     continue_conversation: bool = False,
-) -> tuple[str, list[ToolCall], int, float]:
+    resume_session_id: str = None,
+    fork_session: bool = False,
+) -> tuple[str, list[ToolCall], int, float, str]:
     """
     Run a prompt through Claude and capture structured output.
 
     Args:
         continue_conversation: If True, adds --continue flag to preserve context
                               from the previous prompt in this test run.
+        resume_session_id: If provided, resume from this session ID.
+        fork_session: If True and resume_session_id is provided, fork the session
+                     instead of continuing in place.
 
-    Returns: (response_text, tools_called, exit_code, duration_seconds)
+    Returns: (response_text, tools_called, exit_code, duration_seconds, session_id)
     """
     cmd = [
         "claude",
@@ -359,7 +425,13 @@ def run_claude_prompt(
         "--dangerously-skip-permissions",
     ]
 
-    if continue_conversation:
+    if resume_session_id:
+        # Use --resume with session ID to restore conversation context
+        # --fork-session creates a new session ID instead of reusing the original
+        cmd.extend(["--resume", resume_session_id])
+        if fork_session:
+            cmd.append("--fork-session")
+    elif continue_conversation:
         cmd.append("--continue")
 
     if verbose:
@@ -406,7 +478,7 @@ def run_claude_prompt(
             )
             if span:
                 span.set_attribute("error", "timeout")
-            return "", [], 1, duration
+            return "", [], 1, duration, ""
         except Exception as e:
             duration = time.time() - start_time
             log_to_loki(
@@ -418,7 +490,7 @@ def run_claude_prompt(
             print(f"  Error running Claude: {e}")
             if span:
                 span.set_attribute("error", str(e))
-            return "", [], 1, duration
+            return "", [], 1, duration, ""
 
         duration = time.time() - start_time
 
@@ -427,6 +499,7 @@ def run_claude_prompt(
         tools_called = []
         token_count = 0
         cost_usd = 0.0
+        session_id = ""
 
         for line in result.stdout.strip().split("\n"):
             if not line:
@@ -487,11 +560,12 @@ def run_claude_prompt(
                         },
                     )
 
-            # Final result - capture metrics
+            # Final result - capture metrics and session_id
             elif event_type == "result":
                 if not response_text:
                     response_text = event.get("result", "")
                 cost_usd = event.get("cost_usd", 0.0)
+                session_id = event.get("session_id", "")
                 # Token counts if available
                 usage = event.get("usage", {})
                 token_count = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
@@ -520,10 +594,11 @@ def run_claude_prompt(
                 "exit_code": result.returncode,
                 "cost_usd": cost_usd,
                 "response_preview": response_text[:500],
+                "session_id": session_id,
             },
         )
 
-        return response_text, tools_called, result.returncode, duration
+        return response_text, tools_called, result.returncode, duration, session_id
 
 
 # =============================================================================
@@ -1086,6 +1161,9 @@ def run_skill_test(
     prompt_index: int | None = None,
     fix_context_mode: bool = False,
     conversation_mode: bool = False,
+    fail_fast: bool = False,
+    checkpoint_file: Path | None = None,
+    fork_from: int | None = None,
 ) -> list[PromptResult]:
     """Run skill test for a scenario.
 
@@ -1094,6 +1172,9 @@ def run_skill_test(
                          stdout clean for JSON output.
         conversation_mode: When True, prompts after the first one use --continue
                           to preserve conversation context.
+        fail_fast: When True, stop on first failing prompt.
+        checkpoint_file: Path to JSON file for storing session checkpoints.
+        fork_from: Fork from checkpoint at this prompt index instead of replaying.
     """
     # Output destination - use stderr in fix_context_mode to keep stdout clean for JSON
     out = sys.stderr if fix_context_mode else sys.stdout
@@ -1137,6 +1218,17 @@ def run_skill_test(
     total_duration = 0.0
     total_cost = 0.0
 
+    # Load checkpoint for forking if specified
+    resume_session_id = None
+    fork_session = False
+    if fork_from is not None and checkpoint_file:
+        resume_session_id = load_checkpoint(checkpoint_file, fork_from)
+        if resume_session_id:
+            fork_session = True
+            print(f"Forking from prompt {fork_from} checkpoint: {resume_session_id[:8]}...", file=out)
+        else:
+            print(f"Warning: No checkpoint found for prompt {fork_from}", file=out)
+
     with trace_span(
         "skill_test.run",
         attributes={
@@ -1156,7 +1248,7 @@ def run_skill_test(
                 if verbose:
                     print(f"  Interpolated: {prompt[:50]}...", file=out)
 
-            # Run Claude (now returns 4 values including duration)
+            # Run Claude (now returns 5 values including duration and session_id)
             # In conversation mode, use --continue for prompts after the first
             use_continue = conversation_mode and spec.index > 0
             with trace_span(
@@ -1167,11 +1259,23 @@ def run_skill_test(
                     "continue_conversation": use_continue,
                 },
             ) as prompt_span:
-                response_text, tools_called, exit_code, prompt_duration = run_claude_prompt(
+                response_text, tools_called, exit_code, prompt_duration, session_id = run_claude_prompt(
                     prompt, model=model, verbose=verbose, prompt_index=spec.index,
                     continue_conversation=use_continue,
+                    resume_session_id=resume_session_id,
+                    fork_session=fork_session,
                 )
                 total_duration += prompt_duration
+
+                # Save checkpoint after each prompt
+                if checkpoint_file and session_id:
+                    save_checkpoint(checkpoint_file, spec.index, session_id)
+                    if verbose:
+                        print(f"  Session checkpoint saved: {session_id[:8]}...", file=out)
+
+                # Clear resume for subsequent prompts (only fork first one)
+                resume_session_id = None
+                fork_session = False
 
                 if verbose:
                     print(f"  Response length: {len(response_text)} chars", file=out)
@@ -1243,6 +1347,11 @@ def run_skill_test(
                 results.append(result)
                 print(f"  -> {'PASS' if result.passed else 'FAIL'} (quality: {result.quality})", file=out)
 
+                # Stop on first failure if fail_fast is enabled
+                if fail_fast and not result.passed:
+                    print(f"  Stopping early (--fail-fast enabled)", file=out)
+                    break
+
         # Calculate summary stats
         test_duration = time.time() - test_start_time
         passed_count = sum(1 for r in results if r.passed)
@@ -1313,11 +1422,51 @@ Telemetry (enabled by default):
                         help="Disable telemetry (traces and logs) - telemetry is ON by default")
     parser.add_argument("--conversation", action="store_true",
                         help="Enable conversation mode - prompts after the first use --continue to preserve context")
+    parser.add_argument("--fail-fast", action="store_true",
+                        help="Stop on first failing prompt (useful with --conversation to avoid wasted API calls)")
+    parser.add_argument("--mock", action="store_true",
+                        help="Enable JIRA API mocking for faster, deterministic tests")
+    parser.add_argument("--checkpoint-file", type=Path, metavar="FILE",
+                        help="Path to JSON file for session checkpoints (enables fast iteration)")
+    parser.add_argument("--fork-from", type=int, metavar="N",
+                        help="Fork from checkpoint after prompt N (use with --prompt-index and --checkpoint-file)")
+    parser.add_argument("--list-checkpoints", action="store_true",
+                        help="List available checkpoints and exit (use with --checkpoint-file)")
     args = parser.parse_args()
+
+    # Set mock mode environment variable if requested
+    if args.mock:
+        os.environ["JIRA_MOCK_MODE"] = "true"
 
     if not args.prompts_file.exists():
         print(f"Error: File not found: {args.prompts_file}")
         sys.exit(1)
+
+    # Handle --list-checkpoints
+    if args.list_checkpoints:
+        if not args.checkpoint_file:
+            print("Error: --list-checkpoints requires --checkpoint-file")
+            sys.exit(1)
+        checkpoints = list_checkpoints(args.checkpoint_file)
+        if not checkpoints:
+            print(f"No checkpoints found in {args.checkpoint_file}")
+        else:
+            print(f"Checkpoints in {args.checkpoint_file}:")
+            for idx, session_id in sorted(checkpoints.items()):
+                print(f"  Prompt {idx}: {session_id[:16]}...")
+        sys.exit(0)
+
+    # Validate fork-from usage
+    if args.fork_from is not None:
+        if not args.checkpoint_file:
+            print("Error: --fork-from requires --checkpoint-file")
+            sys.exit(1)
+        if args.prompt_index is None:
+            print("Error: --fork-from requires --prompt-index to specify which prompt to run")
+            sys.exit(1)
+        if args.fork_from >= args.prompt_index:
+            print(f"Error: --fork-from ({args.fork_from}) must be less than --prompt-index ({args.prompt_index})")
+            sys.exit(1)
 
     scenario_name = args.prompts_file.stem
 
@@ -1337,6 +1486,9 @@ Telemetry (enabled by default):
         prompt_index=args.prompt_index,
         fix_context_mode=bool(args.fix_context),
         conversation_mode=args.conversation,
+        fail_fast=args.fail_fast,
+        checkpoint_file=args.checkpoint_file,
+        fork_from=args.fork_from,
     )
 
     if not results:
