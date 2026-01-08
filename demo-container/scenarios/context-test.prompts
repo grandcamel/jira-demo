@@ -1,0 +1,18 @@
+# Context Test - Tests whether conversation context is preserved between prompts
+---
+prompt: |
+  Respond with OKIEDOKIE
+expect:
+  text:
+    must_contain: [OKIEDOKIE]
+  semantic: |
+    Response should contain the word OKIEDOKIE.
+---
+prompt: |
+  Repeat your last response
+expect:
+  text:
+    must_contain: [OKIEDOKIE]
+  semantic: |
+    If conversation context is preserved, response should contain OKIEDOKIE.
+    If context is NOT preserved, this test will fail.

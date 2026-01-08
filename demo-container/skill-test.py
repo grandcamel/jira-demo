@@ -339,9 +339,14 @@ def run_claude_prompt(
     model: str = "sonnet",
     verbose: bool = False,
     prompt_index: int = 0,
+    continue_conversation: bool = False,
 ) -> tuple[str, list[ToolCall], int, float]:
     """
     Run a prompt through Claude and capture structured output.
+
+    Args:
+        continue_conversation: If True, adds --continue flag to preserve context
+                              from the previous prompt in this test run.
 
     Returns: (response_text, tools_called, exit_code, duration_seconds)
     """
@@ -353,6 +358,9 @@ def run_claude_prompt(
         "--model", model,
         "--dangerously-skip-permissions",
     ]
+
+    if continue_conversation:
+        cmd.append("--continue")
 
     if verbose:
         print(f"  Running: claude -p '...' --model {model}")
@@ -1077,12 +1085,15 @@ def run_skill_test(
     json_output: bool = False,
     prompt_index: int | None = None,
     fix_context_mode: bool = False,
+    conversation_mode: bool = False,
 ) -> list[PromptResult]:
     """Run skill test for a scenario.
 
     Args:
         fix_context_mode: When True, all progress output goes to stderr to keep
                          stdout clean for JSON output.
+        conversation_mode: When True, prompts after the first one use --continue
+                          to preserve conversation context.
     """
     # Output destination - use stderr in fix_context_mode to keep stdout clean for JSON
     out = sys.stderr if fix_context_mode else sys.stdout
@@ -1146,15 +1157,19 @@ def run_skill_test(
                     print(f"  Interpolated: {prompt[:50]}...", file=out)
 
             # Run Claude (now returns 4 values including duration)
+            # In conversation mode, use --continue for prompts after the first
+            use_continue = conversation_mode and spec.index > 0
             with trace_span(
                 "skill_test.prompt",
                 attributes={
                     "prompt_index": spec.index,
                     "prompt_preview": spec.prompt[:100],
+                    "continue_conversation": use_continue,
                 },
             ) as prompt_span:
                 response_text, tools_called, exit_code, prompt_duration = run_claude_prompt(
-                    prompt, model=model, verbose=verbose, prompt_index=spec.index
+                    prompt, model=model, verbose=verbose, prompt_index=spec.index,
+                    continue_conversation=use_continue,
                 )
                 total_duration += prompt_duration
 
@@ -1296,6 +1311,8 @@ Telemetry (enabled by default):
                         help="Output fix context JSON for first failure (requires path to Jira-Assistant-Skills)")
     parser.add_argument("--no-debug", action="store_true",
                         help="Disable telemetry (traces and logs) - telemetry is ON by default")
+    parser.add_argument("--conversation", action="store_true",
+                        help="Enable conversation mode - prompts after the first use --continue to preserve context")
     args = parser.parse_args()
 
     if not args.prompts_file.exists():
@@ -1319,6 +1336,7 @@ Telemetry (enabled by default):
         json_output=args.json,
         prompt_index=args.prompt_index,
         fix_context_mode=bool(args.fix_context),
+        conversation_mode=args.conversation,
     )
 
     if not results:
