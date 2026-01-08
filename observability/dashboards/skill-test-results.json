@@ -55,6 +55,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `test_complete` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -87,6 +88,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `high` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -119,6 +121,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `medium` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -151,6 +154,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `low` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -183,6 +187,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} | json | level = `error` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -215,6 +220,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "expr": "sum by () (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `prompt_complete` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],

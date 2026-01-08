@@ -57,7 +57,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Mock client API parity**: Mock client methods must match real `JiraClient` signatures exactly. Common miss: `search_issues()` needs `next_page_token` parameter. Error pattern: `TypeError: MockJiraClientBase.search_issues() got an unexpected keyword argument 'next_page_token'`. Fix in `mock/base.py`, not config_manager.
 - **Test scripts directly first**: Before running full `make test-skill-mock-dev`, test the skill script directly to get clearer errors. See "Mock Mode Debugging" section below.
 - **Mock activation vs mock errors**: Different failure patterns: (1) Mock not activating = credential validation errors + Bash cascade. (2) Mock activated but incomplete = `TypeError` on mock methods. Verify activation first with quick Python test.
-- **jira CLI not installed in container**: SKILL.md files say "use `jira search query`" but `jira` CLI requires `jira-assistant-skills` package. Container only installs `jira-assistant-skills-lib` (library). Fix: add `pip install -e /path/to/plugin` to install CLI, or update SKILL.md to use Python scripts directly.
+- **jira CLI from wheel, not editable install**: The `jira` CLI is defined in root `pyproject.toml` of `jira-assistant-skills` repo. Editable installs (`pip install -e`) fail due to broken venv symlinks in skill directories. Solution: install from pre-built wheel via `pip install /opt/jira-dist/*.whl`. Makefile targets mount `dist/` directory for this.
+- **Rebuild wheel after package changes**: Changes to `jira-assistant-skills` package (CLI, skills) require rebuilding the wheel (`hatch build` or `python -m build`) before container will see them. The wheel is NOT auto-rebuilt.
 - **Skill cascade pattern**: When Claude calls a Skill and the instructed command fails (e.g., `jira` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic.
 
 ## Architecture
@@ -205,7 +206,15 @@ make test-skill-dev SCENARIO=issue FORK_FROM=5 PROMPT_INDEX=6
 
 ## Mock Mode Debugging
 
-Quick verification workflow when mock tests fail:
+Quick verification workflow when mock tests fail.
+
+**Required variables** (set before running commands):
+```bash
+export JIRA_SKILLS_PATH=/path/to/Jira-Assistant-Skills  # Root repo
+export JIRA_PLUGIN_PATH=$JIRA_SKILLS_PATH/plugins/jira-assistant-skills
+export JIRA_LIB_PATH=$JIRA_SKILLS_PATH/jira-assistant-skills-lib
+export JIRA_DIST_PATH=$JIRA_SKILLS_PATH/dist
+```
 
 **Step 1: Verify mock mode activates**
 ```bash
@@ -224,11 +233,11 @@ print(f\"Client type: {type(get_jira_client()).__name__}\")
 **Step 1b: Verify jira CLI is available**
 ```bash
 docker run --rm \
-    -v $JIRA_PLUGIN_PATH:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
+    -v $JIRA_DIST_PATH:/opt/jira-dist:ro \
     --entrypoint bash jira-demo-container:latest \
-    -c "pip install -q -e /home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev && which jira && jira --help | head -5"
-# Expected: /path/to/jira, followed by help text
-# If "jira not found": SKILL.md commands will fail, causing cascade
+    -c "pip install -q /opt/jira-dist/*.whl && which jira && jira --help | head -5"
+# Expected: /home/devuser/venv/bin/jira, followed by help text
+# If "jira not found": wheel may be missing or outdated - run `hatch build` in jira-assistant-skills repo
 ```
 
 **Step 2: Test skill script directly**
@@ -256,8 +265,9 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 | `ValidationError: JIRA URL not configured` | Mock not activating | Check `get_jira_client()` has `is_mock_mode()` check |
 | `TypeError: got unexpected keyword argument` | Mock API incomplete | Add missing parameter to mock method |
 | Tools: `['Skill', 'Bash', 'Bash', ...]` | Credential cascade | Mock working but Claude exploring; skill description issue |
-| `jira: command not found` | CLI not installed | `pip install -e /path/to/plugin` to get `jira` CLI |
-| Skill → setup → Bash exploration | CLI command failed | Check `which jira`; install plugin package if missing |
+| `jira: command not found` | CLI not installed | Install from wheel: `pip install /opt/jira-dist/*.whl` |
+| Skill → setup → Bash exploration | CLI command failed | Check `which jira`; rebuild wheel if outdated |
+| `FileNotFoundError: .../venv/bin/python` | Editable install fails | Use wheel install instead of `-e` for root package |
 
 ## Level 2 Reference
 
