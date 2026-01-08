@@ -1,0 +1,19 @@
+# Fork Test - Tests session forking with 2 prompts
+---
+prompt: |
+  What is 2 + 2?
+expect:
+  tools:
+    must_call: []
+  text:
+    must_contain: ["4"]
+    must_not_contain: [error]
+---
+prompt: |
+  What was the previous answer? Add 1 to it.
+expect:
+  tools:
+    must_call: []
+  text:
+    must_contain: ["5"]
+    must_not_contain: [error]
