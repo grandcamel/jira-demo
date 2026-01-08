@@ -60,7 +60,35 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Mock activation vs mock errors**: Different failure patterns: (1) Mock not activating = credential validation errors + Bash cascade. (2) Mock activated but incomplete = `TypeError` on mock methods. Verify activation first with quick Python test.
 - **jira CLI from wheel, not editable install**: The `jira` CLI is defined in root `pyproject.toml` of `jira-assistant-skills` repo. Editable installs (`pip install -e`) fail due to broken venv symlinks in skill directories. Solution: install from pre-built wheel via `pip install /opt/jira-dist/*.whl`. Makefile targets mount `dist/` directory for this.
 - **Rebuild wheel after package changes**: Changes to `jira-assistant-skills` package (CLI, skills) require rebuilding the wheel (`hatch build` or `python -m build`) before container will see them. The wheel is NOT auto-rebuilt.
-- **Skill cascade pattern**: When Claude calls a Skill and the instructed command fails (e.g., `jira` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic.
+- **Skill cascade on failure**: When Claude calls a Skill and the subsequent Bash command fails (e.g., `jira` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic. Note: `Skill → Bash` is the CORRECT pattern (see below); only failure cascades are problematic.
+- **skill-test.py baked into container**: The `skill-test.py` is copied into the container image at build time. Changes to `demo-container/skill-test.py` require either `make build` OR mounting the local file. Makefile dev targets now mount it automatically: `-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro`.
+- **Judge needs skill execution context**: The LLM judge evaluates tool usage. Without context about how Claude Code skills work (`Skill → Bash` pattern), it will incorrectly penalize Bash usage as "extra tools". The judge prompt in `skill-test.py` includes this context - don't remove it.
+
+## How Claude Code Skills Work
+
+**Fundamental concept**: Claude Code skills are context-loading mechanisms, NOT direct executors.
+
+**The correct pattern:**
+1. **Skill tool** → Loads SKILL.md content into Claude's context (instructions, examples, available scripts)
+2. **Bash tool** → Claude executes the CLI commands described in the skill (e.g., `jira search query "..."`)
+
+**Key behaviors:**
+- Skill tool is activated by YAML frontmatter matching in SKILL.md
+- Once loaded, the skill context persists for the entire conversation
+- Subsequent operations should use Bash directly WITHOUT re-invoking the Skill tool
+- ALL Claude Code skills work this way: context-loading + Bash execution
+
+**Expected tool sequences:**
+| Scenario | Expected Tools | Notes |
+|----------|---------------|-------|
+| First JIRA query in conversation | `['Skill', 'Bash']` | Skill loads context, Bash runs `jira` CLI |
+| Subsequent JIRA queries | `['Bash']` | Context already loaded, just run CLI |
+| Knowledge question (no execution) | `['Skill']` | Only needs context, no CLI execution |
+
+**Test expectation implications:**
+- Tests expecting CLI execution should expect `['Skill', 'Bash']`, not just `['Skill']`
+- "Tool accuracy: partial" when `Skill → Bash` is used is a FALSE NEGATIVE - this is correct behavior
+- Judge refinement suggestions saying "skill should be self-contained without Bash" are INCORRECT
 
 ## Architecture
 
@@ -279,10 +307,13 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 |-------|-------|-----|
 | `ValidationError: JIRA URL not configured` | Mock not activating | Check `get_jira_client()` has `is_mock_mode()` check |
 | `TypeError: got unexpected keyword argument` | Mock API incomplete | Add missing parameter to mock method |
-| Tools: `['Skill', 'Bash', 'Bash', ...]` | Credential cascade | Mock working but Claude exploring; skill description issue |
+| Tools: `['Skill', 'Bash']` | **CORRECT behavior** | This is expected! Skill loads context, Bash runs CLI |
+| Tools: `['Skill', 'Bash', 'Bash', ...]` | Multiple CLI calls | May be correct if multiple operations needed |
+| Tools: `['Skill', 'Bash', 'Skill', ...]` | Re-loading skill | Possible issue; skill should only load once per conversation |
 | `jira: command not found` | CLI not installed | Install from wheel: `pip install /opt/jira-dist/*.whl` |
 | Skill → setup → Bash exploration | CLI command failed | Check `which jira`; rebuild wheel if outdated |
 | `FileNotFoundError: .../venv/bin/python` | Editable install fails | Use wheel install instead of `-e` for root package |
+| "Tool accuracy: partial" with `['Skill', 'Bash']` | **FALSE NEGATIVE** | Test expectations wrong; `Skill → Bash` is correct |
 
 ## Level 2 Reference
 
