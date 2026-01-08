@@ -48,6 +48,10 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **LogQL JSON field filtering**: Use backticks for string values: `| json | quality = \`high\``. Without backticks, Loki treats it as a label reference.
 - **Duplicate logs inflate counts**: If stat panels show inflated counts (~60x expected), logs may be duplicated in Loki. Use `sum by (field)` to aggregate correctly.
 - **Skill routing failures**: Common test failure pattern: jira-assistant hub routes to `jira-assistant-setup` instead of specific skills (`jira-search`, `jira-issue`, `jira-fields`). Check skill descriptions and routing logic.
+- **Library changes need container rebuild**: Changes to `jira-assistant-skills-lib` aren't picked up until `make build`. The library is pip installed during image build, so edits to source files have no effect until rebuild.
+- **Mock mode requires get_jira_client() check**: The `is_mock_mode()` check must be in the `get_jira_client()` convenience function (config_manager.py), not just ConfigManager methods. Skills call the convenience function directly via `from jira_assistant_skills_lib import get_jira_client`.
+- **Telemetry reveals tool call cascades**: Loki `prompt_complete` events include `tools_called` array (e.g., `["Skill", "Bash", "Skill", "Bash"]`). Use this to diagnose unexpected tool usage patterns like credential check cascades.
+- **Compare interactive vs mock tests**: When mock tests fail but interactive tests pass with the same prompt, check if the container has the latest library code. Stale container = mock client not activating = credential validation fails = Bash diagnostic cascade.
 
 ## Architecture
 
