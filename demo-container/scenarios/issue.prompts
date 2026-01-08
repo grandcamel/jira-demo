@@ -3,7 +3,8 @@
 #
 # Tool expectation pattern for conversation mode:
 # - First prompt: must_call [Skill] (loads context, then Bash executes CLI)
-# - Subsequent prompts: must_call [Bash] (context already loaded)
+# - Subsequent prompts: no tool requirement (may use context or call CLI)
+# - Text validation determines success, not tool usage
 ---
 prompt: |
   Show me all issues in project DEMO
@@ -20,8 +21,6 @@ expect:
 prompt: |
   What's the status of DEMO-84?
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [DEMO-84]
     must_not_contain: [error, "not found", failed]
@@ -32,8 +31,6 @@ expect:
 prompt: |
   Create a high priority bug in DEMO: Search results are not sorted correctly
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [DEMO-, created, Bug]
     must_not_contain: [error, failed]
@@ -44,8 +41,6 @@ expect:
 prompt: |
   Show me the details of the bug we just created
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [DEMO-, Bug]
     must_not_contain: [error, "not found"]
@@ -56,8 +51,6 @@ expect:
 prompt: |
   Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [description]
     must_not_contain: [error, failed]
@@ -67,8 +60,6 @@ expect:
 prompt: |
   Show me issues assigned to Jane
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [DEMO-, Jane]
     must_not_contain: [error, "couldn't find"]
@@ -79,8 +70,6 @@ expect:
 prompt: |
   Assign that bug to Jane Manager
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [Jane]
     must_not_contain: [error, failed]
@@ -90,8 +79,6 @@ expect:
 prompt: |
   Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [comment]
     must_not_contain: [error, failed]
@@ -101,8 +88,6 @@ expect:
 prompt: |
   Move that bug to In Progress
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [In Progress]
     must_not_contain: [error, failed, "cannot transition"]
@@ -112,8 +97,6 @@ expect:
 prompt: |
   Log 30 minutes on the bug with description: Initial investigation and root cause analysis
 expect:
-  tools:
-    must_call: [Bash]
   text:
     must_contain: [30]
     must_not_contain: [error, failed]

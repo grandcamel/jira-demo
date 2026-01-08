@@ -1,0 +1,112 @@
+# Issue Scenario (Mock Mode) - Tests jira-issue skill with mock JIRA API
+# CRUD operations for JIRA issues with exact mock data validation
+#
+# Mock seed data:
+#   DEMO-84: Epic "Product Launch", High, Jason Krueger, To Do
+#   DEMO-85: Story "User Authentication", High, Jason Krueger, To Do
+#   DEMO-86: Bug "Login fails on mobile Safari", High, Jane Manager, To Do
+#   DEMO-87: Task "Update API documentation", Medium, Jane Manager, To Do
+#   DEMO-91: Bug "Search pagination bug", Medium, Jason Krueger, To Do
+#
+# Tool expectation pattern:
+#   - First prompt: must_call [Skill] (loads context)
+#   - Subsequent prompts: no tool requirement (may use context or call CLI)
+---
+prompt: |
+  Show me all issues in project DEMO
+expect:
+  tools:
+    must_call: [Skill]
+  text:
+    must_contain: [DEMO-84, DEMO-85, DEMO-86, DEMO-87, "Product Launch", "User Authentication"]
+    must_not_contain: [error, failed, "I don't have access", DEMOSD]
+  semantic: |
+    Response should list all 5 DEMO project issues with keys and summaries.
+    Should NOT include DEMOSD service desk issues.
+---
+prompt: |
+  What's the status of DEMO-84?
+expect:
+  text:
+    must_contain: [DEMO-84, "Product Launch", Epic, "To Do"]
+    must_not_contain: [error, "not found", failed]
+  semantic: |
+    Response should show DEMO-84 details: Product Launch epic,
+    High priority, assigned to Jason Krueger, status To Do.
+---
+prompt: |
+  Create a high priority bug in DEMO: Search results are not sorted correctly
+expect:
+  text:
+    must_contain: [DEMO-, created, Bug, High]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm creation of a new bug with high priority.
+    Mock returns sequential keys starting from DEMO-101.
+---
+prompt: |
+  Show me the details of the bug we just created
+expect:
+  text:
+    must_contain: [DEMO-, Bug, "Search results", High]
+    must_not_contain: [error, "not found"]
+  semantic: |
+    Response should show the created bug with summary containing
+    "Search results are not sorted correctly" and High priority.
+---
+prompt: |
+  Add a description to that bug: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
+expect:
+  text:
+    must_contain: [description, updated]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the description was added/updated.
+---
+prompt: |
+  Show me issues assigned to Jane
+expect:
+  text:
+    must_contain: [DEMO-86, DEMO-87, Jane, "Login fails", "API documentation"]
+    must_not_contain: [error, "couldn't find", DEMO-84, DEMO-85, DEMO-91]
+  semantic: |
+    Response should list exactly DEMO-86 and DEMO-87 which are
+    assigned to Jane Manager. Should NOT include Jason's issues.
+---
+prompt: |
+  Assign that bug we created to Jane Manager
+expect:
+  text:
+    must_contain: [Jane, assigned]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the created bug was assigned to Jane Manager.
+---
+prompt: |
+  Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
+expect:
+  text:
+    must_contain: [comment, added]
+    must_not_contain: [error, failed]
+  semantic: |
+    Response should confirm the comment was added to the bug.
+---
+prompt: |
+  Move that bug to In Progress
+expect:
+  text:
+    must_contain: [In Progress]
+    must_not_contain: [error, failed, "cannot transition"]
+  semantic: |
+    Response should confirm the bug was transitioned/moved to In Progress status.
+---
+prompt: |
+  Log 30 minutes on the bug with description: Initial investigation and root cause analysis
+expect:
+  text:
+    must_contain: ["30"]
+    must_not_contain: [failed]
+  semantic: |
+    Response should attempt to log 30 minutes of work to the bug.
+    Note: Mock client may not support all worklog parameters.
+---
