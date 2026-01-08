@@ -83,8 +83,8 @@ def ensure_network_exists() -> bool:
     return True
 
 
-def get_plugin_paths() -> tuple[Path, Path]:
-    """Get paths to JIRA plugin and library."""
+def get_plugin_paths() -> tuple[Path, Path, Path]:
+    """Get paths to JIRA plugin, library, and dist."""
     skills_path = Path(JIRA_SKILLS_PATH)
 
     # Try different plugin path patterns
@@ -93,8 +93,9 @@ def get_plugin_paths() -> tuple[Path, Path]:
         plugin_path = skills_path / "jira-assistant-skills"
 
     lib_path = skills_path / "jira-assistant-skills-lib"
+    dist_path = skills_path / "dist"
 
-    return plugin_path, lib_path
+    return plugin_path, lib_path, dist_path
 
 
 def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAULT_SCENARIO_TIMEOUT) -> ScenarioResult:
@@ -105,7 +106,7 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
     """
     start_time = time.time()
 
-    plugin_path, lib_path = get_plugin_paths()
+    plugin_path, lib_path, dist_path = get_plugin_paths()
 
     if not plugin_path.exists():
         return ScenarioResult(
@@ -126,14 +127,15 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
         "-v", f"{SECRETS_DIR}/.claude.json:/home/devuser/.claude/.claude.json:ro",
         "-v", f"{plugin_path}:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro",
         "-v", f"{lib_path}:/opt/jira-lib:ro",
+        "-v", f"{dist_path}:/opt/jira-dist:ro",
         "--entrypoint", "bash",
         "jira-demo-container:latest",
         "-c",
     ]
 
-    # Inner command: install lib, symlink plugin, run test with fix-context
+    # Inner command: install lib + wheel (for jira CLI), symlink plugin, run test with fix-context
     inner_cmd = (
-        "pip install -q -e /opt/jira-lib 2>/dev/null; "
+        "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; "
         "rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
         "ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
         f"python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "

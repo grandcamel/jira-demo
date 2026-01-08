@@ -244,6 +244,7 @@ test-skill:
 JIRA_SKILLS_PATH ?= /Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills
 JIRA_PLUGIN_PATH = $(JIRA_SKILLS_PATH)/plugins/jira-assistant-skills
 JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib
+JIRA_DIST_PATH = $(JIRA_SKILLS_PATH)/dist
 # Session persistence directories for fork feature
 CLAUDE_SESSIONS_DIR ?= /tmp/claude-sessions
 CHECKPOINTS_DIR ?= /tmp/checkpoints
@@ -264,11 +265,12 @@ test-skill-dev:
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
+		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
 		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
 		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
 		--entrypoint bash \
 		jira-demo-container:latest \
-		-c "pip install -q -e /opt/jira-lib 2>/dev/null; \
+		-c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; \
 		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
 		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
 		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
@@ -319,11 +321,12 @@ test-skill-mock-dev:
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
+		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
 		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
 		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
 		--entrypoint bash \
 		jira-demo-container:latest \
-		-c "pip install -q -e /opt/jira-lib 2>/dev/null; \
+		-c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; \
 		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
 		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
 		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
