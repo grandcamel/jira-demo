@@ -54,6 +54,9 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Verify library version in container**: To check which library the container actually uses: `docker run --entrypoint bash jira-demo-container:latest -c 'grep -A5 "def get_jira_client" ~/.claude/plugins/cache/jira-assistant-skills/*/skills/shared/scripts/lib/config_manager.py'`
 - **Telemetry reveals tool call cascades**: Loki `prompt_complete` events include `tools_called` array (e.g., `["Skill", "Bash", "Skill", "Bash"]`). Use this to diagnose unexpected tool usage patterns like credential check cascades.
 - **Compare interactive vs mock tests**: When mock tests fail but interactive tests pass with the same prompt, check if the container has the latest library code. Stale container = mock client not activating = credential validation fails = Bash diagnostic cascade.
+- **Mock client API parity**: Mock client methods must match real `JiraClient` signatures exactly. Common miss: `search_issues()` needs `next_page_token` parameter. Error pattern: `TypeError: MockJiraClientBase.search_issues() got an unexpected keyword argument 'next_page_token'`. Fix in `mock/base.py`, not config_manager.
+- **Test scripts directly first**: Before running full `make test-skill-mock-dev`, test the skill script directly to get clearer errors. See "Mock Mode Debugging" section below.
+- **Mock activation vs mock errors**: Different failure patterns: (1) Mock not activating = credential validation errors + Bash cascade. (2) Mock activated but incomplete = `TypeError` on mock methods. Verify activation first with quick Python test.
 
 ## Architecture
 
@@ -84,6 +87,8 @@ nginx --> queue-manager --> ttyd --> demo-container
 | Parallel (specific) | `make test-all-mocks SCENARIOS=search,issue` |
 | Refine skills | `make refine-skill SCENARIO=search` |
 | Shell access | `make shell-queue` / `make shell-demo` |
+| Verify mock activation | See "Mock Mode Debugging" section |
+| Test script directly | See "Mock Mode Debugging" section |
 
 ## Git (Quick Reference)
 
@@ -195,6 +200,50 @@ make test-skill-dev SCENARIO=issue FORK_FROM=5 PROMPT_INDEX=6
 - Tests run all prompts by default; use `FAIL_FAST=1` to stop early
 - Sessions persist in `/tmp/claude-sessions/` across container runs
 - Each fork creates a new session ID (doesn't corrupt the checkpoint)
+
+## Mock Mode Debugging
+
+Quick verification workflow when mock tests fail:
+
+**Step 1: Verify mock mode activates**
+```bash
+docker run --rm -e JIRA_MOCK_MODE=true \
+    -v $JIRA_LIB_PATH:/opt/jira-lib:ro \
+    --entrypoint bash jira-demo-container:latest \
+    -c "pip install -q -e /opt/jira-lib && python3 -c '
+from jira_assistant_skills_lib import get_jira_client
+from jira_assistant_skills_lib.mock import is_mock_mode
+print(f\"is_mock_mode(): {is_mock_mode()}\")
+print(f\"Client type: {type(get_jira_client()).__name__}\")
+'"
+# Expected: is_mock_mode(): True, Client type: MockJiraClient
+```
+
+**Step 2: Test skill script directly**
+```bash
+docker run --rm -e JIRA_MOCK_MODE=true \
+    -v $JIRA_PLUGIN_PATH:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
+    -v $JIRA_LIB_PATH:/opt/jira-lib:ro \
+    --entrypoint bash jira-demo-container:latest \
+    -c "pip install -q -e /opt/jira-lib && \
+        rm -rf ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 && \
+        ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 && \
+        cd ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev/skills/jira-search/scripts && \
+        python3 jql_search.py 'project=DEMO'"
+# Expected: Table of DEMO-84, DEMO-85, etc.
+```
+
+**Step 3: Run full test only after scripts work**
+```bash
+make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
+```
+
+**Common error patterns:**
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `ValidationError: JIRA URL not configured` | Mock not activating | Check `get_jira_client()` has `is_mock_mode()` check |
+| `TypeError: got unexpected keyword argument` | Mock API incomplete | Add missing parameter to mock method |
+| Tools: `['Skill', 'Bash', 'Bash', ...]` | Credential cascade | Mock working but Claude exploring; skill description issue |
 
 ## Level 2 Reference
 
