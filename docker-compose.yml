@@ -92,8 +92,8 @@ services:
       - GF_PLUGINS_DISABLE_PLUGINS=grafana-exploretraces-app,grafana-metricsdrilldown-app,grafana-pyroscope-app
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/demo-home.json
     volumes:
-      # Use built-in configs - custom configs can cause conflicts
-      - ./observability/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      # Mount to LGTM's provisioning path (not /etc/grafana which is ignored)
+      - ./observability/grafana-dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/jira-demo.yaml:ro
       - ./observability/dashboards:/var/lib/grafana/dashboards:ro
       - lgtm-data:/data
     restart: unless-stopped
@@ -141,7 +141,8 @@ services:
 
 networks:
   demo-network:
-    driver: bridge
+    external: true
+    name: demo-telemetry-network
 
 volumes:
   redis-data:

@@ -41,6 +41,8 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_LOG_LEVEL=debug
+      - GF_SERVER_ROOT_URL=http://localhost:3001/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
     ports:
       - "3001:3000"   # Grafana UI for direct access in dev
       - "3100:3100"   # Loki push API for autoplay debug logs

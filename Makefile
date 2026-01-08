@@ -1,6 +1,6 @@
 .PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
-	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill
+	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -11,6 +11,7 @@ endif
 # Development
 dev:
 	@echo "Starting development environment..."
+	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 dev-down:
@@ -27,6 +28,7 @@ build:
 # Deploy
 deploy:
 	@echo "Deploying to production..."
+	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
 	docker-compose pull
 	docker-compose build
 	docker-compose down
@@ -136,9 +138,12 @@ shell-queue:
 
 shell-demo:
 	docker run -it --rm \
+		--network $(DEMO_NETWORK) \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
+		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+		-e LOKI_ENDPOINT=http://lgtm:3100 \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		jira-demo-container:latest
@@ -156,15 +161,15 @@ test-terminal:
 run-scenario:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make run-scenario SCENARIO=<name> [DELAY=3]"; echo "Scenarios: issue, search, agile, jsm, admin, bulk, collaborate, dev, fields, relationships, time"; exit 1; fi
 	docker run --rm --entrypoint bash \
+		--network $(DEMO_NETWORK) \
 		-e TERM=xterm \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
 		-e AUTOPLAY_DEBUG=true \
-		-e OTEL_ENDPOINT=http://host.docker.internal:3100 \
+		-e OTEL_ENDPOINT=http://lgtm:3100 \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/tmp/.claude.json.source:ro \
-		--add-host=host.docker.internal:host-gateway \
 		jira-demo-container:latest \
 		-c "/workspace/autoplay.sh --auto-advance --delay $(or $(DELAY),3) --debug $(SCENARIO)"
 
@@ -184,6 +189,7 @@ health-local:
 	@printf "Redis: "; docker-compose exec -T redis redis-cli ping > /dev/null 2>&1 && echo "OK" || echo "FAILED"
 
 start-local:
+	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 stop-local:
@@ -212,9 +218,12 @@ traces-errors-local:
 test-skill:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill SCENARIO=<name> [MODEL=sonnet] [JUDGE_MODEL=haiku] [VERBOSE=1]"; exit 1; fi
 	docker run --rm \
+		--network $(DEMO_NETWORK) \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
+		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+		-e LOKI_ENDPOINT=http://lgtm:3100 \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		jira-demo-container:latest \
@@ -238,14 +247,19 @@ JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib
 # Session persistence directories for fork feature
 CLAUDE_SESSIONS_DIR ?= /tmp/claude-sessions
 CHECKPOINTS_DIR ?= /tmp/checkpoints
+# Docker network for telemetry (external network shared with compose)
+DEMO_NETWORK ?= demo-telemetry-network
 test-skill-dev:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-dev SCENARIO=<name> [PROMPT_INDEX=N] [FIX_CONTEXT=1]"; exit 1; fi
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
 	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
 	@docker run --rm \
+		--network $(DEMO_NETWORK) \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
+		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+		-e LOKI_ENDPOINT=http://lgtm:3100 \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
@@ -274,7 +288,10 @@ test-skill-dev:
 test-skill-mock:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-mock SCENARIO=<name> [MODEL=sonnet] [JUDGE_MODEL=haiku]"; exit 1; fi
 	docker run --rm \
+		--network $(DEMO_NETWORK) \
 		-e JIRA_MOCK_MODE=true \
+		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+		-e LOKI_ENDPOINT=http://lgtm:3100 \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		jira-demo-container:latest \
@@ -294,7 +311,10 @@ test-skill-mock-dev:
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
 	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
 	@docker run --rm \
+		--network $(DEMO_NETWORK) \
 		-e JIRA_MOCK_MODE=true \
+		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+		-e LOKI_ENDPOINT=http://lgtm:3100 \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
@@ -328,6 +348,20 @@ refine-skill:
 		--max-attempts $(or $(MAX_ATTEMPTS),3) \
 		--model $(or $(MODEL),sonnet) \
 		--judge-model $(or $(JUDGE_MODEL),haiku) \
+		$(if $(VERBOSE),--verbose,)
+
+# Run all mock skill tests in parallel
+# Usage: make test-all-mocks
+#        make test-all-mocks SCENARIOS="search,issue,agile"
+#        make test-all-mocks MAX_WORKERS=4 TIMEOUT=1800
+test-all-mocks:
+	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
+	python scripts/parallel-mock-test.py \
+		--scenarios $(or $(SCENARIOS),all) \
+		--max-workers $(or $(MAX_WORKERS),4) \
+		--timeout $(or $(TIMEOUT),1200) \
+		--output-dir $(PWD) \
 		$(if $(VERBOSE),--verbose,)
 
 # Help
@@ -374,6 +408,8 @@ help:
 	@echo "  make test-skill-mock SCENARIO=search  - Run with mocked JIRA API (fast)"
 	@echo "  make test-skill-mock-dev SCENARIO=search - Mock + local source mounts"
 	@echo "  make refine-skill SCENARIO=search     - Iterative test+fix loop"
+	@echo "  make test-all-mocks                   - Run all mock tests in parallel"
+	@echo "  make test-all-mocks SCENARIOS=search,issue - Run specific scenarios"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make check-token    - Check Claude OAuth token expiration"

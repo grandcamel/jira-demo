@@ -31,6 +31,7 @@ Internet --> nginx (SSL) --> DigitalOcean Droplet
     +-- lgtm (Grafana, Prometheus, Tempo, Loki)
     +-- promtail (log shipping)
     +-- redis-exporter (Redis metrics)
+    +-- demo-telemetry-network (external, shared with standalone containers)
 ```
 
 ## Quick Start (Local Development)
@@ -233,6 +234,18 @@ make refine-skill SCENARIO=search
 - **Fail-fast mode**: Stop on first failure to save time and API costs
 - **Mock API**: Test skill logic without hitting real JIRA API
 - **LLM-as-judge**: Semantic quality evaluation beyond pattern matching
+
+### Parallel Testing
+
+Multiple skill tests can run simultaneously - all containers share the `demo-telemetry-network` for telemetry:
+
+```bash
+# Run multiple scenarios in parallel
+make test-skill-dev SCENARIO=search &
+make test-skill-dev SCENARIO=issue &
+make test-skill-dev SCENARIO=agile &
+wait
+```
 
 ## Observability
 
