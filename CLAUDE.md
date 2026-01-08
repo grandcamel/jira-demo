@@ -42,6 +42,12 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Skill test telemetry**: Enabled by default. Use `--no-debug` to disable. Logs to Loki, traces to Tempo.
 - **Custom base image**: Use `make build BASE_IMAGE=your-registry/image:tag` for corporate certs (Zscaler).
 - **Container telemetry network**: Standalone containers use external `demo-telemetry-network`. Created by `make dev`. See "Parallel Container Telemetry" section.
+- **LGTM Grafana provisioning path**: The LGTM image uses `/otel-lgtm/grafana/conf/provisioning/dashboards/`, NOT `/etc/grafana/provisioning/`. Mount dashboard configs there.
+- **Grafana direct dev access**: To access Grafana directly on port 3001 (bypassing nginx), set `GF_SERVER_ROOT_URL=http://localhost:3001/` and `GF_SERVER_SERVE_FROM_SUB_PATH=false` in docker-compose.dev.yml.
+- **Loki stat panel queries**: Plain log queries with `count` reduction don't work for stat panels. Use metric queries: `sum by () (count_over_time({job="skill-test"} |= \`event\` [$__range]))`.
+- **LogQL JSON field filtering**: Use backticks for string values: `| json | quality = \`high\``. Without backticks, Loki treats it as a label reference.
+- **Duplicate logs inflate counts**: If stat panels show inflated counts (~60x expected), logs may be duplicated in Loki. Use `sum by (field)` to aggregate correctly.
+- **Skill routing failures**: Common test failure pattern: jira-assistant hub routes to `jira-assistant-setup` instead of specific skills (`jira-search`, `jira-issue`, `jira-fields`). Check skill descriptions and routing logic.
 
 ## Architecture
 
@@ -102,12 +108,14 @@ gh pr merge --rebase --delete-branch
 | System Overview | Infrastructure health metrics |
 
 **Skill Test Results Dashboard Features:**
-- Filter by scenario (search, issue, agile, etc.)
-- Quality distribution over time (high/medium/low)
-- Prompt durations by scenario
+- Stat panels: Test Runs, High/Medium/Low Quality counts, Errors, Prompts
+- Filter by scenario (search, issue, agile, etc.) and log level
+- Quality distribution over time (high/medium/low) with correct aggregation
+- Prompt durations by scenario (mean/max)
 - Tables: Judge analysis, prompt completions, tool usage, test summaries, assertion failures
 - Direct trace links to Tempo
 - Raw log viewer with level filtering
+- Dashboard links to other dashboards in header
 
 ## Parallel Container Telemetry
 
@@ -154,6 +162,13 @@ make test-all-mocks MAX_WORKERS=6 VERBOSE=1
 - All containers share `demo-telemetry-network` for telemetry
 - 10-minute timeout per scenario
 - Exit code 0 if all pass, 1 if any fail
+
+**PLAN file contents:**
+- Summary with quality rating (high/medium/low)
+- Failure details: prompt text, tools called, tool accuracy
+- Failed assertions table with pass/fail status
+- Judge analysis: reasoning, refinement suggestion, expectation suggestion
+- Test commands for iteration
 
 ## Skill Test Iteration Workflow
 
