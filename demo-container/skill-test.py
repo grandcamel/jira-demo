@@ -1457,6 +1457,15 @@ Telemetry (enabled by default):
     if args.mock:
         os.environ["JIRA_MOCK_MODE"] = "true"
 
+    # Auto-select mock prompts file if in mock mode and -mock variant exists
+    if args.mock or os.environ.get("JIRA_MOCK_MODE", "").lower() == "true":
+        mock_prompts_file = args.prompts_file.with_name(
+            args.prompts_file.stem + "-mock" + args.prompts_file.suffix
+        )
+        if mock_prompts_file.exists():
+            print(f"Mock mode: using {mock_prompts_file.name} instead of {args.prompts_file.name}")
+            args.prompts_file = mock_prompts_file
+
     if not args.prompts_file.exists():
         print(f"Error: File not found: {args.prompts_file}")
         sys.exit(1)
