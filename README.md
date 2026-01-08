@@ -181,6 +181,13 @@ make health        # Check system health
 make otel-logs     # View LGTM stack logs
 make otel-reset    # Reset observability data
 
+# Skill Testing
+make test-skill-dev SCENARIO=search           # Test with assertions
+make test-skill-dev SCENARIO=x CONVERSATION=1 # Multi-prompt context
+make test-skill-dev SCENARIO=x FAIL_FAST=1    # Stop on first failure
+make test-skill-mock-dev SCENARIO=search      # Test with mock API
+make refine-skill SCENARIO=search             # Automated fix loop
+
 # Invite Management
 make invite                      # Generate invite (default 48h)
 make invite EXPIRES=7d           # Generate with custom expiration
@@ -198,6 +205,34 @@ make dev
 make invite
 # Opens: http://localhost:8080/{TOKEN}
 ```
+
+### Skill Testing & Refinement
+
+Test JIRA skills with assertions and fast iteration:
+
+```bash
+# Run skill test with assertions
+make test-skill-dev SCENARIO=search
+
+# Multi-prompt conversation with fail-fast
+make test-skill-dev SCENARIO=issue CONVERSATION=1 FAIL_FAST=1
+
+# If prompt 7 fails, iterate on just that prompt (0-indexed)
+make test-skill-dev SCENARIO=issue FORK_FROM=5 PROMPT_INDEX=6
+
+# Test with mocked JIRA API (fast, no API calls)
+make test-skill-mock-dev SCENARIO=search
+
+# Automated refinement loop
+make refine-skill SCENARIO=search
+```
+
+**Key features:**
+- **Session checkpointing**: Saves state after each prompt for fast iteration
+- **Fork from checkpoint**: Retry failed prompts without replaying earlier ones
+- **Fail-fast mode**: Stop on first failure to save time and API costs
+- **Mock API**: Test skill logic without hitting real JIRA API
+- **LLM-as-judge**: Semantic quality evaluation beyond pattern matching
 
 ## Observability
 
