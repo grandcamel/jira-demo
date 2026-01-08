@@ -74,7 +74,7 @@ def init_telemetry(
     _scenario_name = scenario
 
     if not debug:
-        print("[OTEL] Debug mode disabled, telemetry off")
+        print("[OTEL] Debug mode disabled, telemetry off", file=sys.stderr)
         return None
 
     # Configure endpoints
@@ -105,14 +105,14 @@ def init_telemetry(
             trace.set_tracer_provider(_trace_provider)
             _tracer = trace.get_tracer(service_name)
 
-            print(f"[OTEL] Tracing initialized -> {otel_endpoint}")
+            print(f"[OTEL] Tracing initialized -> {otel_endpoint}", file=sys.stderr)
         except Exception as e:
-            print(f"[OTEL] Failed to initialize tracing: {e}")
+            print(f"[OTEL] Failed to initialize tracing: {e}", file=sys.stderr)
             _tracer = None
     else:
-        print("[OTEL] OpenTelemetry not installed, tracing disabled")
+        print("[OTEL] OpenTelemetry not installed, tracing disabled", file=sys.stderr)
 
-    print(f"[OTEL] Loki logging -> {_loki_endpoint}")
+    print(f"[OTEL] Loki logging -> {_loki_endpoint}", file=sys.stderr)
     return _tracer
 
 
@@ -123,9 +123,9 @@ def shutdown_telemetry() -> None:
         try:
             _trace_provider.force_flush(timeout_millis=5000)
             _trace_provider.shutdown()
-            print("[OTEL] Telemetry shutdown complete")
+            print("[OTEL] Telemetry shutdown complete", file=sys.stderr)
         except Exception as e:
-            print(f"[OTEL] Shutdown error: {e}")
+            print(f"[OTEL] Shutdown error: {e}", file=sys.stderr)
 
 
 def log_to_loki(
@@ -1076,29 +1076,37 @@ def run_skill_test(
     verbose: bool = False,
     json_output: bool = False,
     prompt_index: int | None = None,
+    fix_context_mode: bool = False,
 ) -> list[PromptResult]:
-    """Run skill test for a scenario."""
+    """Run skill test for a scenario.
+
+    Args:
+        fix_context_mode: When True, all progress output goes to stderr to keep
+                         stdout clean for JSON output.
+    """
+    # Output destination - use stderr in fix_context_mode to keep stdout clean for JSON
+    out = sys.stderr if fix_context_mode else sys.stdout
     scenario_name = prompts_file.stem
     test_start_time = time.time()
 
     # Parse prompts file
     specs = parse_prompts_file(prompts_file)
     if not specs:
-        print(f"Error: No prompts found in {prompts_file}")
+        print(f"Error: No prompts found in {prompts_file}", file=out)
         return []
 
     # Filter to single prompt if specified
     if prompt_index is not None:
         if prompt_index < 0 or prompt_index >= len(specs):
-            print(f"Error: prompt_index {prompt_index} out of range (0-{len(specs)-1})")
+            print(f"Error: prompt_index {prompt_index} out of range (0-{len(specs)-1})", file=out)
             return []
         specs = [specs[prompt_index]]
-        print(f"Running prompt {prompt_index} from {prompts_file.name}")
+        print(f"Running prompt {prompt_index} from {prompts_file.name}", file=out)
     else:
-        print(f"Running {len(specs)} prompts from {prompts_file.name}")
+        print(f"Running {len(specs)} prompts from {prompts_file.name}", file=out)
 
-    print(f"Model: {model}, Judge: {judge_model}")
-    print()
+    print(f"Model: {model}, Judge: {judge_model}", file=out)
+    print(file=out)
 
     # Log test start
     log_to_loki(
@@ -1128,14 +1136,14 @@ def run_skill_test(
         },
     ) as test_span:
         for spec in specs:
-            print(f"[{spec.index + 1}/{len(specs)}] {spec.prompt[:50]}...")
+            print(f"[{spec.index + 1}/{len(specs)}] {spec.prompt[:50]}...", file=out)
 
             # Interpolate captured values if needed
             prompt = spec.prompt
             if spec.expect.validates and spec.expect.validates in captured_values:
                 prompt = interpolate_prompt(prompt, captured_values)
                 if verbose:
-                    print(f"  Interpolated: {prompt[:50]}...")
+                    print(f"  Interpolated: {prompt[:50]}...", file=out)
 
             # Run Claude (now returns 4 values including duration)
             with trace_span(
@@ -1151,15 +1159,15 @@ def run_skill_test(
                 total_duration += prompt_duration
 
                 if verbose:
-                    print(f"  Response length: {len(response_text)} chars")
-                    print(f"  Tools called: {[t.name for t in tools_called]}")
+                    print(f"  Response length: {len(response_text)} chars", file=out)
+                    print(f"  Tools called: {[t.name for t in tools_called]}", file=out)
 
                 # Capture values for later prompts
                 if spec.expect.capture:
                     new_captures = capture_values(response_text, spec.expect.capture)
                     captured_values.update(new_captures)
                     if verbose and new_captures:
-                        print(f"  Captured: {new_captures}")
+                        print(f"  Captured: {new_captures}", file=out)
 
                 # Run assertions
                 tool_assertions = run_tool_assertions(tools_called, spec.expect.tools)
@@ -1218,7 +1226,7 @@ def run_skill_test(
                     prompt_span.set_attribute("tools_called", ",".join(t.name for t in tools_called))
 
                 results.append(result)
-                print(f"  -> {'PASS' if result.passed else 'FAIL'} (quality: {result.quality})")
+                print(f"  -> {'PASS' if result.passed else 'FAIL'} (quality: {result.quality})", file=out)
 
         # Calculate summary stats
         test_duration = time.time() - test_start_time
@@ -1310,6 +1318,7 @@ Telemetry (enabled by default):
         verbose=args.verbose,
         json_output=args.json,
         prompt_index=args.prompt_index,
+        fix_context_mode=bool(args.fix_context),
     )
 
     if not results:

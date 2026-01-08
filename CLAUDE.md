@@ -36,6 +36,10 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Rebuild after prompt changes**: Container caches scenarios. Run `make build` after editing `.prompts` files.
 - **Prompts run independently**: No conversation context between prompts. Use explicit issue keys, not "that bug".
 - **YAML parses numbers**: `must_contain: [30]` becomes int. Code must handle with `str(pattern)`.
+- **OTEL traces need flush**: Python scripts must call `force_flush()` before exit or traces won't be sent to Tempo.
+- **Tempo query port**: Port 3200 must be exposed in docker-compose.dev.yml to query traces via API.
+- **Skill test telemetry**: Enabled by default. Use `--no-debug` to disable. Logs to Loki, traces to Tempo.
+- **Custom base image**: Use `make build BASE_IMAGE=your-registry/image:tag` for corporate certs (Zscaler).
 
 ## Architecture
 
@@ -74,9 +78,9 @@ gh pr merge --rebase --delete-branch
 
 **Metrics**: `demo_queue_size`, `demo_sessions_active`, `demo_session_duration_seconds`
 
-**Logs**: Query Loki with `{job="autoplay"}` or `{job="nginx"}`
+**Logs**: Query Loki with `{job="autoplay"}`, `{job="skill-test"}`, or `{job="nginx"}`
 
-**Traces**: Spans prefixed `cleanup.*` and `seed.*` in Tempo
+**Traces**: Spans prefixed `cleanup.*`, `seed.*`, `skill_test.*`, `claude.*` in Tempo
 
 ## Level 2 Reference
 
