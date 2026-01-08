@@ -1,0 +1,1011 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": ["jira-demo"],
+      "targetBlank": false,
+      "title": "All Dashboards",
+      "type": "dashboards"
+    }
+  ],
+  "panels": [
+    {
+      "gridPos": { "h": 2, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false },
+        "content": "# Skill Test Results\n\nVisualize telemetry from parallel mock skill tests. Shows prompts, responses, tool usage, quality ratings, and durations.",
+        "mode": "markdown"
+      },
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 2 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `test_complete`",
+          "refId": "A"
+        }
+      ],
+      "title": "Test Runs",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 2 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `high`",
+          "refId": "A"
+        }
+      ],
+      "title": "High Quality",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "yellow", "value": null }]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 2 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `medium`",
+          "refId": "A"
+        }
+      ],
+      "title": "Medium Quality",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 2 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json | quality = `low`",
+          "refId": "A"
+        }
+      ],
+      "title": "Low Quality",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 2 },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} | json | level = `error`",
+          "refId": "A"
+        }
+      ],
+      "title": "Errors",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 2 },
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["count"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `prompt_complete`",
+          "refId": "A"
+        }
+      ],
+      "title": "Prompts",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "high" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "medium" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "low" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 8,
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (quality) (count_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json [$__interval]))",
+          "legendFormat": "{{quality}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Quality Distribution Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({job=\"skill-test\", scenario=~\"$scenario\"} |= `prompt_complete` | json | unwrap duration_seconds [$__interval]) by (scenario)",
+          "legendFormat": "{{scenario}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Prompt Duration by Scenario",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [
+            {
+              "options": { "high": { "color": "green", "index": 0 }, "medium": { "color": "yellow", "index": 1 }, "low": { "color": "red", "index": 2 } },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "scenario" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "prompt_index" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "Prompt #" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "quality" },
+            "properties": [
+              { "id": "custom.width", "value": 80 },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tool_accuracy" },
+            "properties": [{ "id": "custom.width", "value": 100 }, { "id": "displayName", "value": "Tool Acc." }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "duration_seconds" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "unit", "value": "s" }, { "id": "displayName", "value": "Duration" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tools_called" },
+            "properties": [{ "id": "custom.width", "value": 200 }, { "id": "displayName", "value": "Tools" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "reasoning" },
+            "properties": [{ "id": "custom.width", "value": 400 }, { "id": "displayName", "value": "Judge Analysis" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 14 },
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Time" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `judge_complete` | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Judge Results - Prompt Analysis",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "id": true,
+              "tsNs": true,
+              "labels": true,
+              "labelTypes": true,
+              "message": true,
+              "level": true,
+              "event": true,
+              "trace_id": true,
+              "service_name": true,
+              "detected_level": true,
+              "level_extracted": true,
+              "quality_extracted": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "scenario": 1,
+              "prompt_index": 2,
+              "quality": 3,
+              "tool_accuracy": 4,
+              "duration_seconds": 5,
+              "reasoning": 6
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "scenario" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "prompt_index" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "Prompt #" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tools_count" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "# Tools" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "response_length" },
+            "properties": [{ "id": "custom.width", "value": 100 }, { "id": "displayName", "value": "Resp. Len" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "duration_seconds" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "unit", "value": "s" }, { "id": "displayName", "value": "Duration" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "cost_usd" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "unit", "value": "currencyUSD" }, { "id": "displayName", "value": "Cost" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tools_called" },
+            "properties": [{ "id": "custom.width", "value": 250 }, { "id": "displayName", "value": "Tools Called" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "response_preview" },
+            "properties": [{ "id": "custom.width", "value": 500 }, { "id": "displayName", "value": "Response Preview" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+      "id": 11,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Time" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `prompt_complete` | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Prompt Completions - Response Details",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "id": true,
+              "tsNs": true,
+              "labels": true,
+              "labelTypes": true,
+              "message": true,
+              "level": true,
+              "event": true,
+              "exit_code": true,
+              "session_id": true,
+              "service_name": true,
+              "detected_level": true,
+              "level_extracted": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "scenario": 1,
+              "prompt_index": 2,
+              "duration_seconds": 3,
+              "tools_count": 4,
+              "tools_called": 5,
+              "response_length": 6,
+              "cost_usd": 7,
+              "response_preview": 8
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "scenario" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "prompt_index" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "Prompt #" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tool" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tool_name" },
+            "properties": [{ "id": "custom.width", "value": 150 }, { "id": "displayName", "value": "Tool" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tool_input" },
+            "properties": [{ "id": "custom.width", "value": 500 }, { "id": "displayName", "value": "Input" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Time" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `tool_use` | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Tool Usage Details",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "id": true,
+              "tsNs": true,
+              "labels": true,
+              "labelTypes": true,
+              "message": true,
+              "level": true,
+              "event": true,
+              "service_name": true,
+              "detected_level": true,
+              "level_extracted": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "scenario": 1,
+              "prompt_index": 2,
+              "tool_name": 3,
+              "tool_input": 4
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "scenario" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "passed_count" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "Passed" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "failed_count" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "Failed" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "pass_rate" },
+            "properties": [{ "id": "custom.width", "value": 100 }, { "id": "unit", "value": "percentunit" }, { "id": "displayName", "value": "Pass Rate" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "quality_high" },
+            "properties": [{ "id": "custom.width", "value": 60 }, { "id": "displayName", "value": "High" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "quality_medium" },
+            "properties": [{ "id": "custom.width", "value": 60 }, { "id": "displayName", "value": "Med" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "quality_low" },
+            "properties": [{ "id": "custom.width", "value": 60 }, { "id": "displayName", "value": "Low" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "total_duration_seconds" },
+            "properties": [{ "id": "custom.width", "value": 100 }, { "id": "unit", "value": "s" }, { "id": "displayName", "value": "Total Dur." }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "claude_duration_seconds" },
+            "properties": [{ "id": "custom.width", "value": 100 }, { "id": "unit", "value": "s" }, { "id": "displayName", "value": "Claude Dur." }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Time" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `test_complete` | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Test Run Summaries",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "id": true,
+              "tsNs": true,
+              "labels": true,
+              "labelTypes": true,
+              "message": true,
+              "level": true,
+              "event": true,
+              "service_name": true,
+              "detected_level": true,
+              "level_extracted": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "scenario": 1,
+              "passed_count": 2,
+              "failed_count": 3,
+              "pass_rate": 4,
+              "quality_high": 5,
+              "quality_medium": 6,
+              "quality_low": 7,
+              "total_duration_seconds": 8,
+              "claude_duration_seconds": 9
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "text", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "scenario" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "prompt_index" },
+            "properties": [{ "id": "custom.width", "value": 80 }, { "id": "displayName", "value": "Prompt #" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "failed_tool_assertions" },
+            "properties": [{ "id": "custom.width", "value": 400 }, { "id": "displayName", "value": "Failed Tool Assertions" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "failed_text_assertions" },
+            "properties": [{ "id": "custom.width", "value": 400 }, { "id": "displayName", "value": "Failed Text Assertions" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 50 },
+      "id": 14,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Time" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\"} |= `assertion_failure` | json",
+          "refId": "A"
+        }
+      ],
+      "title": "Assertion Failures",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "id": true,
+              "tsNs": true,
+              "labels": true,
+              "labelTypes": true,
+              "message": true,
+              "level": true,
+              "event": true,
+              "service_name": true,
+              "detected_level": true,
+              "level_extracted": true,
+              "trace_id": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "scenario": 1,
+              "prompt_index": 2,
+              "failed_tool_assertions": 3,
+              "failed_text_assertions": 4
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "filterable": true,
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "traceID" },
+            "properties": [
+              { "id": "custom.width", "value": 200 },
+              { "id": "links", "value": [{ "title": "View Trace", "url": "/explore?left=%7B%22datasource%22%3A%22tempo%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22tempo%22%2C%22uid%22%3A%22tempo%22%7D%2C%22queryType%22%3A%22traceqlSearch%22%2C%22limit%22%3A20%2C%22tableType%22%3A%22traces%22%2C%22query%22%3A%22${__value.raw}%22%7D%5D%7D" }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "spanName" },
+            "properties": [{ "id": "custom.width", "value": 200 }, { "id": "displayName", "value": "Operation" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "traceDuration" },
+            "properties": [{ "id": "custom.width", "value": 100 }, { "id": "unit", "value": "ns" }, { "id": "displayName", "value": "Duration" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 58 },
+      "id": 15,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Time" }]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "limit": 50,
+          "query": "{resource.service.name=\"skill-test\" && resource.scenario=~\"$scenario\"}",
+          "queryType": "traceqlSearch",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Traces - Click to Explore",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 66 },
+      "id": 16,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"skill-test\", scenario=~\"$scenario\", level=~\"$level\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "Raw Logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jira-demo", "skill-test", "telemetry"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values({job=\"skill-test\"}, scenario)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Scenario",
+        "multi": true,
+        "name": "scenario",
+        "options": [],
+        "query": "label_values({job=\"skill-test\"}, scenario)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Log Level",
+        "multi": true,
+        "name": "level",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "info", "value": "info" },
+          { "selected": false, "text": "warning", "value": "warning" },
+          { "selected": false, "text": "error", "value": "error" },
+          { "selected": false, "text": "debug", "value": "debug" }
+        ],
+        "query": "info,warning,error,debug",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Skill Test Results",
+  "uid": "skill-test-results",
+  "version": 1,
+  "weekStart": ""
+}
