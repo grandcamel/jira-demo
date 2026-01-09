@@ -54,13 +54,18 @@ def _load_issues_state() -> tuple[dict, int]:
         return {}, 100
 
 
+def _wrap_with_persistence(original_method):
+    """Wrap a method to save state after execution."""
+    def wrapper(self, *args, **kwargs):
+        result = original_method(self, *args, **kwargs)
+        _save_issues_state(self._issues, self._next_issue_id)
+        return result
+    return wrapper
+
+
 def _patch_mock_client_base(cls):
     """Patch MockJiraClientBase to use file-based persistence."""
     original_init = cls.__init__
-    original_create = cls.create_issue
-    original_update = cls.update_issue
-    original_transition = cls.transition_issue
-    original_assign = cls.assign_issue
 
     def patched_init(self, *args, **kwargs):
         original_init(self, *args, **kwargs)
@@ -70,31 +75,12 @@ def _patch_mock_client_base(cls):
             self._issues.update(persisted_issues)
             self._next_issue_id = max(self._next_issue_id, next_id)
 
-    def patched_create(self, fields):
-        result = original_create(self, fields)
-        _save_issues_state(self._issues, self._next_issue_id)
-        return result
-
-    def patched_update(self, issue_key, fields=None, update=None):
-        result = original_update(self, issue_key, fields, update)
-        _save_issues_state(self._issues, self._next_issue_id)
-        return result
-
-    def patched_transition(self, issue_key, transition_id, fields=None, update=None, comment=None):
-        result = original_transition(self, issue_key, transition_id, fields, update, comment)
-        _save_issues_state(self._issues, self._next_issue_id)
-        return result
-
-    def patched_assign(self, issue_key, account_id=None):
-        result = original_assign(self, issue_key, account_id)
-        _save_issues_state(self._issues, self._next_issue_id)
-        return result
-
     cls.__init__ = patched_init
-    cls.create_issue = patched_create
-    cls.update_issue = patched_update
-    cls.transition_issue = patched_transition
-    cls.assign_issue = patched_assign
+
+    # Wrap mutation methods to persist state after each call
+    for method_name in ("create_issue", "update_issue", "transition_issue", "assign_issue"):
+        original = getattr(cls, method_name)
+        setattr(cls, method_name, _wrap_with_persistence(original))
 
     # Mark as patched to avoid double-patching
     cls._mock_persistence_patched = True

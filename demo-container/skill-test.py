@@ -188,6 +188,16 @@ def log_to_loki(
         pass  # Don't fail tests due to logging issues
 
 
+def _set_span_attribute(span, key: str, value) -> None:
+    """Set a span attribute, converting to string if needed."""
+    if value is None:
+        return
+    if isinstance(value, (int, float, bool)):
+        span.set_attribute(key, value)
+    else:
+        span.set_attribute(key, str(value))
+
+
 @contextmanager
 def trace_span(
     name: str,
@@ -204,8 +214,7 @@ def trace_span(
     with _tracer.start_as_current_span(name) as span:
         if attributes:
             for key, value in attributes.items():
-                if value is not None:
-                    span.set_attribute(key, str(value) if not isinstance(value, (int, float, bool)) else value)
+                _set_span_attribute(span, key, value)
         try:
             yield span
             span.set_status(Status(StatusCode.OK))
@@ -224,46 +233,32 @@ def trace_span(
 # =============================================================================
 
 
+def _load_checkpoints_file(checkpoint_file: Path) -> dict:
+    """Load checkpoints from file, returning empty dict on error."""
+    if not checkpoint_file.exists():
+        return {}
+    try:
+        return json.loads(checkpoint_file.read_text())
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
 def save_checkpoint(checkpoint_file: Path, prompt_index: int, session_id: str) -> None:
     """Save a session checkpoint after a prompt completes."""
-    checkpoints = {}
-    if checkpoint_file.exists():
-        try:
-            with open(checkpoint_file, "r") as f:
-                checkpoints = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            checkpoints = {}
-
+    checkpoints = _load_checkpoints_file(checkpoint_file)
     checkpoints[str(prompt_index)] = session_id
-
-    with open(checkpoint_file, "w") as f:
-        json.dump(checkpoints, f, indent=2)
+    checkpoint_file.write_text(json.dumps(checkpoints, indent=2))
 
 
 def load_checkpoint(checkpoint_file: Path, prompt_index: int) -> str | None:
     """Load a session checkpoint for a specific prompt index."""
-    if not checkpoint_file.exists():
-        return None
-
-    try:
-        with open(checkpoint_file, "r") as f:
-            checkpoints = json.load(f)
-        return checkpoints.get(str(prompt_index))
-    except (json.JSONDecodeError, IOError):
-        return None
+    return _load_checkpoints_file(checkpoint_file).get(str(prompt_index))
 
 
 def list_checkpoints(checkpoint_file: Path) -> dict[int, str]:
     """List all available checkpoints."""
-    if not checkpoint_file.exists():
-        return {}
-
-    try:
-        with open(checkpoint_file, "r") as f:
-            checkpoints = json.load(f)
-        return {int(k): v for k, v in checkpoints.items()}
-    except (json.JSONDecodeError, IOError):
-        return {}
+    checkpoints = _load_checkpoints_file(checkpoint_file)
+    return {int(k): v for k, v in checkpoints.items()}
 
 
 # =============================================================================
@@ -767,6 +762,22 @@ Respond in JSON only:
 }}"""
 
 
+def _extract_json_from_output(output: str) -> str:
+    """Extract JSON object from output, handling markdown code blocks."""
+    # Handle markdown code blocks
+    if "```json" in output:
+        output = output.split("```json")[1].split("```")[0].strip()
+    elif "```" in output:
+        output = output.split("```")[1].split("```")[0].strip()
+
+    # Find JSON object boundaries
+    json_start = output.find("{")
+    json_end = output.rfind("}") + 1
+    if json_start >= 0 and json_end > json_start:
+        return output[json_start:json_end]
+    return output
+
+
 def run_llm_judge(
     result: PromptResult,
     model: str = "haiku",
@@ -852,21 +863,8 @@ def run_llm_judge(
         # Parse JSON response from text output
         try:
             output = proc.stdout.strip()
-
-            # Try to extract JSON from response
-            # Handle potential markdown code blocks
-            if "```json" in output:
-                output = output.split("```json")[1].split("```")[0].strip()
-            elif "```" in output:
-                output = output.split("```")[1].split("```")[0].strip()
-
-            # Try to find JSON object in output
-            json_start = output.find("{")
-            json_end = output.rfind("}") + 1
-            if json_start >= 0 and json_end > json_start:
-                output = output[json_start:json_end]
-
-            judge_result = json.loads(output)
+            json_text = _extract_json_from_output(output)
+            judge_result = json.loads(json_text)
             parsed_result = {
                 "quality": judge_result.get("quality", "unknown"),
                 "tool_accuracy": judge_result.get("tool_accuracy", "unknown"),
@@ -939,6 +937,12 @@ class Colors:
     BOLD = "\033[1m"
     RESET = "\033[0m"
 
+    @classmethod
+    def for_quality(cls, quality: str) -> str:
+        """Return color code for quality level."""
+        quality_colors = {"high": cls.GREEN, "medium": cls.YELLOW, "low": cls.RED}
+        return quality_colors.get(quality, cls.DIM)
+
 
 def print_report(results: list[PromptResult], scenario_name: str) -> None:
     """Print formatted test report."""
@@ -967,11 +971,7 @@ def print_report(results: list[PromptResult], scenario_name: str) -> None:
             print(f"  {icon} Text: {desc}{detail_str}")
 
         # Quality
-        quality_color = {
-            "high": c.GREEN,
-            "medium": c.YELLOW,
-            "low": c.RED,
-        }.get(result.quality, c.DIM)
+        quality_color = c.for_quality(result.quality)
         print(f"  {c.BLUE}Quality:{c.RESET} {quality_color}{result.quality.upper()}{c.RESET}")
 
         # Reasoning
