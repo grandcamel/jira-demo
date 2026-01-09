@@ -40,6 +40,10 @@ RUN chmod 755 /workspace/autoplay.sh && chown devuser:node /workspace/autoplay.s
 COPY skill-test.py /workspace/skill-test.py
 RUN chmod 755 /workspace/skill-test.py && chown devuser:node /workspace/skill-test.py
 
+# Copy mock persistence patch (sitecustomize.py for file-based state)
+COPY patches/ /workspace/patches/
+RUN chown -R devuser:node /workspace/patches
+
 # Install Python dependencies for skill-test telemetry
 RUN pip install --no-cache-dir requests opentelemetry-api opentelemetry-sdk \
     opentelemetry-exporter-otlp-proto-http
@@ -74,6 +78,8 @@ ENV JIRA_PROFILE=demo
 ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 ENV DEMO_SESSION=true
 ENV PATH="/usr/local/cargo/bin:${PATH}"
+# Add patches dir to PYTHONPATH for sitecustomize.py (mock persistence)
+ENV PYTHONPATH="/workspace/patches:${PYTHONPATH}"
 
 WORKDIR /workspace/demo
 

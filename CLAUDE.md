@@ -66,7 +66,7 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Conversation mode context reuse**: In `CONVERSATION=1` mode, Claude may answer from context instead of re-calling CLI when data is already available. Example: After listing issues, "What's the status of DEMO-84?" may be answered from context without Bash. This causes tool expectation failures even when responses are correct. Design prompts to require fresh data or accept context reuse as valid.
 - **Scenario tool expectations pattern**: For conversation mode scenarios, first prompt should `must_call: [Skill]`, subsequent prompts should `must_call: [Bash]`. The scenarios directory is mounted in dev targets for iteration without rebuild.
 - **Semantic disambiguation in prompts**: Use "jira bug" instead of just "bug" when referencing created issues. Without "jira", Claude may answer from context instead of executing CLI operations. This improved test pass rates from 50-70% to 80-90%.
-- **Mock client state doesn't persist**: Issues created in mock mode may not persist for subsequent queries in the same conversation. Prompts that reference "the bug we just created" may fail to retrieve it. This is a mock limitation, not a skill bug.
+- **Mock client state now persists**: File-based persistence (`/tmp/mock_state.json`) enables created issues to persist across CLI calls within the same container run. Implemented via `sitecustomize.py` import hook in `/workspace/patches/`. State resets per scenario (new container run = fresh state).
 - **Mock client parameter warnings**: The mock client may log warnings for unsupported parameters (e.g., `notify_users`). Relax `must_not_contain: [error]` expectations to `must_not_contain: [failed]` for prompts that may trigger these warnings.
 - **Test result variability**: Expect 10-20% variation in pass rates between identical test runs. Claude's non-deterministic responses and conversation context handling cause variability. Run tests multiple times to assess true pass rate.
 
@@ -327,6 +327,21 @@ docker run --rm -e JIRA_MOCK_MODE=true \
         cd ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev/skills/jira-search/scripts && \
         python3 jql_search.py 'project=DEMO'"
 # Expected: Table of DEMO-84, DEMO-85, etc.
+```
+
+**Step 2b: Verify mock persistence works**
+```bash
+docker run --rm -e JIRA_MOCK_MODE=true \
+    -e PYTHONPATH=/workspace/patches \
+    -v $(pwd)/demo-container/patches:/workspace/patches:ro \
+    -v $JIRA_LIB_PATH:/opt/jira-lib:ro \
+    -v $JIRA_DIST_PATH:/opt/jira-dist:ro \
+    --entrypoint bash jira-demo-container:latest \
+    -c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl && \
+        jira issue create -p DEMO -t Bug -s 'Test' && \
+        cat /tmp/mock_state.json && \
+        jira issue get DEMO-101"
+# Expected: Issue created, state file written, issue retrieved in second CLI call
 ```
 
 **Step 3: Run full test only after scripts work**

@@ -319,6 +319,7 @@ test-skill-mock-dev:
 		-e JIRA_MOCK_MODE=true \
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		-e PYTHONPATH=/workspace/patches \
 		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
 		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
@@ -326,6 +327,7 @@ test-skill-mock-dev:
 		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
 		-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro \
 		-v $(PWD)/demo-container/scenarios:/workspace/scenarios:ro \
+		-v $(PWD)/demo-container/patches:/workspace/patches:ro \
 		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
 		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
 		--entrypoint bash \
