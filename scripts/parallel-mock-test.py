@@ -98,6 +98,28 @@ def get_plugin_paths() -> tuple[Path, Path, Path]:
     return plugin_path, lib_path, dist_path
 
 
+def _parse_test_output(stdout: str) -> Optional[dict]:
+    """Parse JSON fix context from test output."""
+    stdout = stdout.strip()
+
+    # Try direct parse
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError:
+        pass
+
+    # Try to find JSON in output (may have non-JSON preamble)
+    for line in reversed(stdout.split("\n")):
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+    return None
+
+
 def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAULT_SCENARIO_TIMEOUT) -> ScenarioResult:
     """
     Run a single scenario test in a Docker container.
@@ -157,65 +179,30 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
         duration = time.time() - start_time
 
         # Parse output
+        parsed = _parse_test_output(result.stdout)
+
+        if parsed is not None and parsed.get("status") == "all_passed":
+            return ScenarioResult(scenario=scenario, passed=True, duration_seconds=duration)
+
         if result.returncode == 0:
-            # Check if it's actually all passed (fix-context returns JSON even on success)
-            try:
-                output = json.loads(result.stdout.strip())
-                if output.get("status") == "all_passed":
-                    return ScenarioResult(
-                        scenario=scenario,
-                        passed=True,
-                        duration_seconds=duration,
-                    )
-            except json.JSONDecodeError:
-                pass
+            return ScenarioResult(scenario=scenario, passed=True, duration_seconds=duration)
 
-            # Assume passed if exit code 0
-            return ScenarioResult(
-                scenario=scenario,
-                passed=True,
-                duration_seconds=duration,
-            )
-
-        # Non-zero exit - try to parse fix context from stdout
-        try:
-            fix_ctx = json.loads(result.stdout.strip())
-            if fix_ctx.get("status") == "all_passed":
-                return ScenarioResult(
-                    scenario=scenario,
-                    passed=True,
-                    duration_seconds=duration,
-                )
+        if parsed is not None:
             return ScenarioResult(
                 scenario=scenario,
                 passed=False,
                 duration_seconds=duration,
-                fix_context=fix_ctx,
+                fix_context=parsed,
             )
-        except json.JSONDecodeError:
-            # Try to find JSON in output (may have non-JSON preamble)
-            for line in reversed(result.stdout.strip().split("\n")):
-                line = line.strip()
-                if line.startswith("{"):
-                    try:
-                        fix_ctx = json.loads(line)
-                        return ScenarioResult(
-                            scenario=scenario,
-                            passed=False,
-                            duration_seconds=duration,
-                            fix_context=fix_ctx,
-                        )
-                    except json.JSONDecodeError:
-                        continue
 
-            # Could not parse JSON - include stderr for debugging
-            error_detail = result.stderr[-1000:] if result.stderr else result.stdout[-500:]
-            return ScenarioResult(
-                scenario=scenario,
-                passed=False,
-                duration_seconds=duration,
-                error=f"Could not parse fix context. Output: {error_detail}",
-            )
+        # Could not parse JSON - include stderr for debugging
+        error_detail = result.stderr[-1000:] if result.stderr else result.stdout[-500:]
+        return ScenarioResult(
+            scenario=scenario,
+            passed=False,
+            duration_seconds=duration,
+            error=f"Could not parse fix context. Output: {error_detail}",
+        )
 
     except subprocess.TimeoutExpired:
         return ScenarioResult(
@@ -441,7 +428,7 @@ Examples:
         sys.exit(1)
 
     # Check plugin path
-    plugin_path, lib_path = get_plugin_paths()
+    plugin_path, lib_path, _ = get_plugin_paths()
     if not plugin_path.exists():
         print(f"Error: Plugin not found at {plugin_path}")
         print(f"Set JIRA_SKILLS_PATH environment variable")

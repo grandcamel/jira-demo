@@ -13,6 +13,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -166,6 +167,31 @@ def run_skill_test(
 # =============================================================================
 
 
+def _parse_fix_agent_output(output: str, default_session_id: str | None) -> str | None:
+    """Extract session ID from fix agent JSON output."""
+    try:
+        output_data = json.loads(output)
+        return output_data.get("session_id", default_session_id)
+    except json.JSONDecodeError:
+        return default_session_id
+
+
+def _extract_text_from_output(output: str) -> str:
+    """Extract text content from fix agent output (handles JSON or raw text)."""
+    try:
+        output_data = json.loads(output)
+        if isinstance(output_data.get("result"), str):
+            return output_data["result"]
+        if isinstance(output_data.get("content"), list):
+            return "\n".join(
+                block.get("text", "") for block in output_data["content"]
+                if block.get("type") == "text"
+            )
+    except json.JSONDecodeError:
+        pass
+    return output
+
+
 def run_fix_agent(
     fix_context: dict,
     jira_skills_path: str,
@@ -287,29 +313,12 @@ After making changes, provide a brief summary of what you changed and why.
 
     # Parse output to find what changed
     output = result.stdout
-    new_session_id = session_id  # Default to previous session
-
-    # Try to parse JSON output for session ID
-    try:
-        output_data = json.loads(output)
-        new_session_id = output_data.get("session_id", session_id)
-        # Extract text content from JSON response
-        if isinstance(output_data.get("result"), str):
-            output = output_data["result"]
-        elif isinstance(output_data.get("content"), list):
-            output = "\n".join(
-                block.get("text", "") for block in output_data["content"]
-                if block.get("type") == "text"
-            )
-    except json.JSONDecodeError:
-        # Fall back to raw output
-        pass
+    new_session_id = _parse_fix_agent_output(output, session_id)
+    output = _extract_text_from_output(output)
 
     # Look for file edit indicators
     files_changed = []
     if "Edit" in output or "edited" in output.lower() or "updated" in output.lower():
-        # Try to extract file names from output
-        import re
         file_patterns = re.findall(r'(?:skills/|lib/)[^\s\'"]+\.(?:md|py)', output)
         files_changed = list(set(file_patterns))
 
