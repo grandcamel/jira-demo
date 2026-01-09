@@ -55,6 +55,10 @@ def run_skill_test(
         plugin_path = Path(jira_skills_path) / "jira-assistant-skills"
     lib_path = Path(jira_skills_path) / "jira-assistant-skills-lib"
 
+    # Ensure checkpoint directory exists on host
+    checkpoint_dir = Path("/tmp/checkpoints")
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
     # Build docker command
     cmd = [
         "docker", "run", "--rm",
@@ -65,6 +69,7 @@ def run_skill_test(
         "-v", f"{JIRA_DEMO_PATH}/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro",
         "-v", f"{plugin_path}:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro",
         "-v", f"{lib_path}:/opt/jira-lib:ro",
+        "-v", "/tmp/checkpoints:/tmp/checkpoints",  # Persist checkpoints across container runs
         "--entrypoint", "bash",
         "jira-demo-container:latest",
         "-c",
@@ -75,6 +80,7 @@ def run_skill_test(
         "pip install -q -e /opt/jira-lib 2>/dev/null; "
         "rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
         "ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
+        "mkdir -p /tmp/checkpoints; "  # Ensure checkpoint dir exists in container
         f"python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "
         f"--model {model} --judge-model {judge_model}"
     )
@@ -119,26 +125,37 @@ def run_skill_test(
 
     # Parse output
     if fix_context:
-        # Output is fix context JSON
+        # Output is fix context JSON (may be multi-line)
+        stdout = result.stdout.strip()
+
+        # Try to parse the whole stdout as JSON
         try:
-            ctx = json.loads(result.stdout)
-            if ctx.get("status") == "all_passed":
-                return True, None
-            return False, ctx
+            ctx = json.loads(stdout)
+            if isinstance(ctx, dict):
+                if ctx.get("status") == "all_passed":
+                    return True, None
+                return False, ctx
         except json.JSONDecodeError:
-            # Might have non-JSON output before the JSON
-            lines = result.stdout.strip().split("\n")
-            for line in reversed(lines):
-                try:
-                    ctx = json.loads(line)
+            pass
+
+        # Find JSON object in output - look for opening brace and parse from there
+        brace_idx = stdout.find("{")
+        if brace_idx >= 0:
+            try:
+                ctx = json.loads(stdout[brace_idx:])
+                if isinstance(ctx, dict):
                     if ctx.get("status") == "all_passed":
                         return True, None
                     return False, ctx
-                except json.JSONDecodeError:
-                    continue
-            print("Error: Could not parse fix context from output")
-            print(result.stdout[-1000:])
-            return False, None
+            except json.JSONDecodeError:
+                pass
+
+        print("Error: Could not parse fix context from output")
+        print(f"stdout length: {len(result.stdout)}")
+        print(f"stderr length: {len(result.stderr)}")
+        print(f"stdout (last 2000 chars): {result.stdout[-2000:]}")
+        print(f"stderr (last 500 chars): {result.stderr[-500:]}")
+        return False, None
     else:
         # Check exit code for pass/fail
         return result.returncode == 0, None
