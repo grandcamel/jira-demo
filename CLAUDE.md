@@ -180,6 +180,46 @@ curl -s 'http://localhost:3100/loki/api/v1/query' \
 curl -s 'http://localhost:3100/loki/api/v1/label/scenario/values' | jq '.data'
 ```
 
+**Skill Test Telemetry Events:**
+
+| Event | Key Fields | Use Case |
+|-------|------------|----------|
+| `prompt_start` | `prompt_text` (1000 chars) | Track when prompts begin |
+| `prompt_complete` | `prompt`, `response` (5000 chars each), `tools_called`, `duration_seconds` | Full prompt/response text for debugging |
+| `failure_detail` | All context: `prompt`, `response`, `tool_assertions`, `text_assertions`, `reasoning`, `refinement_suggestion` | Single event with everything needed to debug failures |
+| `judge_complete` | `quality`, `tool_accuracy`, `reasoning`, `refinement_suggestion`, `expectation_suggestion` | Judge analysis with full suggestions |
+| `assertion_failure` | `failed_tool_assertions`, `failed_text_assertions` | Which assertions failed |
+| `test_complete` | `passed_count`, `failed_count`, `pass_rate`, `quality_high/medium/low` | Test run summary |
+
+**Query prompt/response text from Loki:**
+```bash
+# Get all failure details with full context (best for debugging)
+curl -s 'http://localhost:3100/loki/api/v1/query_range' \
+  --data-urlencode 'query={job="skill-test"} |= `failure_detail` | json' \
+  --data-urlencode 'start='$(date -v-1H +%s) --data-urlencode 'end='$(date +%s) \
+  | jq -r '.data.result[].values[][1]' | jq '{prompt, response, quality, reasoning}'
+
+# Get prompt/response for specific scenario and prompt index
+curl -s 'http://localhost:3100/loki/api/v1/query_range' \
+  --data-urlencode 'query={job="skill-test", scenario="issue-mock", prompt_index="4"} |= `prompt_complete` | json' \
+  --data-urlencode 'start='$(date -v-1H +%s) --data-urlencode 'end='$(date +%s) \
+  | jq -r '.data.result[].values[][1]' | jq '{prompt, response, tools_called}'
+
+# List all failed prompts with their assertions
+curl -s 'http://localhost:3100/loki/api/v1/query_range' \
+  --data-urlencode 'query={job="skill-test", status="fail"} |= `failure_detail` | json' \
+  --data-urlencode 'start='$(date -v-12H +%s) --data-urlencode 'end='$(date +%s) \
+  | jq -r '.data.result[].values[][1]' | jq '{scenario: .scenario, prompt_index, text_assertions}'
+```
+
+**Grafana Dashboard Development Tips:**
+- Use `| json` pipeline to parse structured log fields
+- Filter by labels: `{job="skill-test", scenario=~"issue.*", quality="low"}`
+- For tables showing prompt/response: use `| json | line_format "{{.prompt}}"` with "Logs" visualization
+- Stat panels need `queryType: "instant"` in JSON to avoid count inflation
+- Use `failure_detail` event for comprehensive failure tables (has all context in one event)
+- Stream labels available: `job`, `scenario`, `prompt_index`, `quality`, `status`, `level`
+
 ## Parallel Container Telemetry
 
 Standalone `docker run` containers share an external network with compose services for telemetry access.
