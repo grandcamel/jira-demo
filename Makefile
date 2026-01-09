@@ -346,9 +346,11 @@ test-skill-mock-dev:
 		    $(if $(FORK_FROM),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json --fork-from $(FORK_FROM),)"
 
 # Skill refinement loop - iteratively test and fix skills
+# Uses checkpoint-based iteration: fail-fast, fork from checkpoint, single fix session
 # Usage: make refine-skill SCENARIO=search MAX_ATTEMPTS=3
 refine-skill:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make refine-skill SCENARIO=<name> [MAX_ATTEMPTS=3]"; exit 1; fi
+	@mkdir -p /tmp/checkpoints
 	python demo-container/skill-refine-loop.py \
 		--scenario $(SCENARIO) \
 		--jira-skills-path $(JIRA_SKILLS_PATH) \

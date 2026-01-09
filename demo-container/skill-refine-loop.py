@@ -39,6 +39,10 @@ def run_skill_test(
     prompt_index: int | None = None,
     fix_context: bool = False,
     verbose: bool = False,
+    conversation: bool = True,
+    fail_fast: bool = True,
+    checkpoint_file: str | None = None,
+    fork_from: int | None = None,
 ) -> tuple[bool, dict | None]:
     """
     Run skill test with local source mounts.
@@ -74,6 +78,16 @@ def run_skill_test(
         f"python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "
         f"--model {model} --judge-model {judge_model}"
     )
+
+    # Add conversation mode and fail-fast for checkpoint-based iteration
+    if conversation:
+        inner_cmd += " --conversation"
+    if fail_fast:
+        inner_cmd += " --fail-fast"
+    if checkpoint_file:
+        inner_cmd += f" --checkpoint-file {checkpoint_file}"
+    if fork_from is not None:
+        inner_cmd += f" --fork-from {fork_from}"
 
     if prompt_index is not None:
         inner_cmd += f" --prompt-index {prompt_index}"
@@ -139,11 +153,20 @@ def run_fix_agent(
     fix_context: dict,
     jira_skills_path: str,
     verbose: bool = False,
+    session_id: str | None = None,
+    attempt_history: list[dict] | None = None,
 ) -> dict:
     """
     Run the skill-fix agent to make changes based on failure context.
 
-    Returns: {"success": bool, "files_changed": [...], "summary": "..."}
+    Args:
+        fix_context: Context about the failure from skill-test.py
+        jira_skills_path: Path to the JIRA skills repo
+        verbose: Enable verbose output
+        session_id: Optional session ID to continue previous fix session
+        attempt_history: List of previous fix attempts for context
+
+    Returns: {"success": bool, "files_changed": [...], "summary": "...", "session_id": "..."}
     """
     # Build the prompt for the fix agent
     failure = fix_context["failure"]
@@ -188,6 +211,17 @@ Current relevant file contents:
         for commit in fix_context["git_history"]:
             prompt += f"- {commit['commit']}: {commit['message']}\n"
 
+    # Add previous attempt history for cumulative context
+    if attempt_history:
+        prompt += "\n## Previous Fix Attempts (this session)\n"
+        for h in attempt_history:
+            prompt += f"- Attempt {h['attempt']}: "
+            if h.get('files'):
+                prompt += f"Changed {h['files']}, "
+            prompt += f"Result: {h['result']}\n"
+            if h.get('error_summary'):
+                prompt += f"  Error: {h['error_summary']}\n"
+
     prompt += """
 
 ## Your Task
@@ -205,6 +239,8 @@ After making changes, provide a brief summary of what you changed and why.
 
     if verbose:
         print(f"Running fix agent with context for prompt: {failure['prompt_text'][:50]}...")
+        if session_id:
+            print(f"Continuing session: {session_id}")
 
     # Run Claude to make the fixes
     cmd = [
@@ -212,8 +248,12 @@ After making changes, provide a brief summary of what you changed and why.
         "-p", prompt,
         "--model", "sonnet",
         "--dangerously-skip-permissions",
-        "--output-format", "text",
+        "--output-format", "json",  # JSON format to capture session ID
     ]
+
+    # Continue previous session if available
+    if session_id:
+        cmd.extend(["--resume", session_id])
 
     try:
         result = subprocess.run(
@@ -224,12 +264,29 @@ After making changes, provide a brief summary of what you changed and why.
             cwd=jira_skills_path,  # Run in skills directory so edits work
         )
     except subprocess.TimeoutExpired:
-        return {"success": False, "files_changed": [], "summary": "Fix agent timed out"}
+        return {"success": False, "files_changed": [], "summary": "Fix agent timed out", "session_id": session_id}
     except Exception as e:
-        return {"success": False, "files_changed": [], "summary": f"Fix agent error: {e}"}
+        return {"success": False, "files_changed": [], "summary": f"Fix agent error: {e}", "session_id": session_id}
 
     # Parse output to find what changed
     output = result.stdout
+    new_session_id = session_id  # Default to previous session
+
+    # Try to parse JSON output for session ID
+    try:
+        output_data = json.loads(output)
+        new_session_id = output_data.get("session_id", session_id)
+        # Extract text content from JSON response
+        if isinstance(output_data.get("result"), str):
+            output = output_data["result"]
+        elif isinstance(output_data.get("content"), list):
+            output = "\n".join(
+                block.get("text", "") for block in output_data["content"]
+                if block.get("type") == "text"
+            )
+    except json.JSONDecodeError:
+        # Fall back to raw output
+        pass
 
     # Look for file edit indicators
     files_changed = []
@@ -243,6 +300,7 @@ After making changes, provide a brief summary of what you changed and why.
         "success": result.returncode == 0,
         "files_changed": files_changed,
         "summary": output[-500:] if len(output) > 500 else output,
+        "session_id": new_session_id,
     }
 
 
@@ -262,10 +320,15 @@ def run_refinement_loop(
     """
     Run the refinement loop until all tests pass or max attempts reached.
 
+    Uses checkpoint-based iteration:
+    - Fail-fast: Stop at first failing prompt
+    - Fork from checkpoint: On retry, skip passed prompts
+    - Single fix session: Maintain context across fix attempts
+
     Returns: True if all tests pass, False otherwise
     """
     print(f"{'=' * 70}")
-    print("SKILL REFINEMENT LOOP")
+    print("SKILL REFINEMENT LOOP (with checkpoint-based iteration)")
     print(f"{'=' * 70}")
     print(f"Scenario: {scenario}")
     print(f"Skills path: {jira_skills_path}")
@@ -274,9 +337,30 @@ def run_refinement_loop(
     print(f"{'=' * 70}")
     print()
 
+    # State for checkpoint-based iteration
+    checkpoint_file = f"/tmp/checkpoints/{scenario}.json"
+    fix_session_id: str | None = None
+    attempt_history: list[dict] = []
+    last_failing_prompt_index: int | None = None
+
     for attempt in range(1, max_attempts + 1):
         print(f"[Attempt {attempt}/{max_attempts}]")
         print("-" * 40)
+
+        # Determine if we should fork from checkpoint
+        fork_from: int | None = None
+        prompt_index: int | None = None
+
+        if attempt > 1 and last_failing_prompt_index is not None:
+            # Fork from checkpoint just before the failing prompt
+            if last_failing_prompt_index > 0:
+                fork_from = last_failing_prompt_index - 1
+                prompt_index = last_failing_prompt_index
+                print(f"Forking from checkpoint {fork_from}, running prompt {prompt_index}")
+            else:
+                # First prompt failed, no checkpoint to fork from
+                prompt_index = 0
+                print(f"First prompt failed, running from start")
 
         # Run test with fix context output
         all_passed, fix_ctx = run_skill_test(
@@ -286,6 +370,11 @@ def run_refinement_loop(
             judge_model=judge_model,
             fix_context=True,
             verbose=verbose,
+            conversation=True,
+            fail_fast=True,
+            checkpoint_file=checkpoint_file,
+            fork_from=fork_from,
+            prompt_index=prompt_index,
         )
 
         if all_passed:
@@ -300,14 +389,34 @@ def run_refinement_loop(
             continue
 
         failure = fix_ctx.get("failure", {})
-        print(f"Failed prompt: {failure.get('prompt_text', 'unknown')[:60]}...")
+        last_failing_prompt_index = failure.get("prompt_index")
+        print(f"Failed at prompt {last_failing_prompt_index}: {failure.get('prompt_text', 'unknown')[:60]}...")
         print(f"Quality: {failure.get('quality', 'unknown')}")
         print(f"Refinement suggestion: {failure.get('refinement_suggestion', 'none')[:100]}...")
         print()
 
-        # Run fix agent
+        # Run fix agent with session continuity
         print("Running fix agent...")
-        fix_result = run_fix_agent(fix_ctx, jira_skills_path, verbose=verbose)
+        if fix_session_id:
+            print(f"Continuing fix session: {fix_session_id[:20]}...")
+        fix_result = run_fix_agent(
+            fix_ctx,
+            jira_skills_path,
+            verbose=verbose,
+            session_id=fix_session_id,
+            attempt_history=attempt_history,
+        )
+
+        # Update session ID for next iteration
+        fix_session_id = fix_result.get("session_id", fix_session_id)
+
+        # Track attempt in history
+        attempt_history.append({
+            "attempt": attempt,
+            "files": fix_result["files_changed"],
+            "result": "still failing",
+            "error_summary": failure.get('refinement_suggestion', '')[:100],
+        })
 
         if fix_result["files_changed"]:
             print(f"Files changed: {fix_result['files_changed']}")

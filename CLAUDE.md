@@ -249,6 +249,32 @@ make test-skill-dev SCENARIO=issue FORK_FROM=5 PROMPT_INDEX=6
 - Sessions persist in `/tmp/claude-sessions/` across container runs
 - Each fork creates a new session ID (doesn't corrupt the checkpoint)
 
+## Automated Skill Refinement
+
+The `refine-skill` target runs an automated fix loop with checkpoint-based iteration:
+
+```bash
+make refine-skill SCENARIO=issue MAX_ATTEMPTS=3
+```
+
+**How it works:**
+1. **Attempt 1:** Run test with `--conversation --fail-fast --checkpoint-file`
+2. **On failure:** Save checkpoint, extract failing prompt index, run fix agent
+3. **Attempt 2+:** Fork from checkpoint before failing prompt, run only that prompt
+4. **Fix agent session:** Maintains single Claude session across attempts (sees all previous fixes)
+
+**Flow:**
+```
+Attempt 1: Run all prompts → Fail at prompt N → Checkpoint at N-1 → Fix agent edits
+Attempt 2: Fork from N-1 → Run prompt N → Still fails → Fix agent continues with history
+Attempt 3: Fork from N-1 → Pass → Success! OR Fail at M → New checkpoint at M-1
+```
+
+**Benefits:**
+- Skip replaying passed prompts (uses fork from checkpoint)
+- Fix agent sees full conversation history (what was tried, what failed)
+- Cumulative context helps agent avoid repeating failed fixes
+
 ## Mock Mode Debugging
 
 Quick verification workflow when mock tests fail.
