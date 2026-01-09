@@ -45,7 +45,7 @@ expect:
     Mock returns sequential keys starting from DEMO-101.
 ---
 prompt: |
-  Use the jira CLI to get the details of the bug we just created and show me its key, summary, priority, and status
+  Use the jira CLI to get the details of the jira bug we just created and show me its key, summary, priority, and status
 expect:
   text:
     must_contain: [DEMO-, Bug]
@@ -55,13 +55,14 @@ expect:
     May reference the newly created issue key from context.
 ---
 prompt: |
-  Update the bug we created with this description: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
+  Update the jira bug we created with this description: When searching for issues, results appear in random order instead of by relevance. Expected behavior is sorting by relevance score.
 expect:
   text:
     must_contain: [description]
-    must_not_contain: [error, failed]
+    must_not_contain: [failed]
   semantic: |
     Response should confirm the description was added or updated.
+    Note: Mock client may show parameter warnings.
 ---
 prompt: |
   Show me issues assigned to Jane
@@ -74,7 +75,7 @@ expect:
     assigned to Jane Manager. Should NOT include Jason's issues.
 ---
 prompt: |
-  Assign the bug we created to Jane Manager
+  Assign the jira bug we created to Jane Manager
 expect:
   text:
     must_contain: [Jane]
@@ -84,7 +85,7 @@ expect:
     Note: Mock client may show warnings about notify_users parameter.
 ---
 prompt: |
-  Add a comment to the bug: Investigating - this looks like a sorting algorithm issue in the search service
+  Add a comment to the jira bug: Investigating - this looks like a sorting algorithm issue in the search service
 expect:
   text:
     must_contain: [comment, added]
@@ -93,7 +94,7 @@ expect:
     Response should confirm the comment was added to the bug.
 ---
 prompt: |
-  Move that bug to In Progress
+  Move that jira bug to In Progress
 expect:
   text:
     must_contain: [In Progress]
@@ -102,7 +103,7 @@ expect:
     Response should confirm the bug was transitioned/moved to In Progress status.
 ---
 prompt: |
-  Log 30 minutes of work on the bug with work description: Initial investigation and root cause analysis
+  Log 30 minutes of work on the jira bug with work description: Initial investigation and root cause analysis
 expect:
   text:
     must_contain: ["30"]
