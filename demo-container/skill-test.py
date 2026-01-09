@@ -580,7 +580,7 @@ def run_claude_prompt(
             span.set_attribute("token_count", token_count)
             span.set_attribute("duration_seconds", duration)
 
-        # Log completion
+        # Log completion with full prompt and response for debugging
         log_to_loki(
             f"Prompt {prompt_index} completed in {duration:.1f}s",
             level="info",
@@ -593,7 +593,8 @@ def run_claude_prompt(
                 "tools_called": [t.name for t in tools_called],
                 "exit_code": result.returncode,
                 "cost_usd": cost_usd,
-                "response_preview": response_text[:500],
+                "prompt": prompt[:5000],
+                "response": response_text[:5000],
                 "session_id": session_id,
             },
         )
@@ -880,7 +881,7 @@ def run_llm_judge(
                 span.set_attribute("tool_accuracy", parsed_result["tool_accuracy"])
                 span.set_attribute("duration_seconds", duration)
 
-            # Log judge result
+            # Log judge result with full suggestions
             log_to_loki(
                 f"Judge completed for prompt {result.spec.index}: quality={parsed_result['quality']}",
                 level="info",
@@ -893,7 +894,9 @@ def run_llm_judge(
                     "duration_seconds": duration,
                     "quality": parsed_result["quality"],
                     "tool_accuracy": parsed_result["tool_accuracy"],
-                    "reasoning": parsed_result["reasoning"][:300],
+                    "reasoning": parsed_result["reasoning"],
+                    "refinement_suggestion": parsed_result["refinement_suggestion"],
+                    "expectation_suggestion": parsed_result["expectation_suggestion"],
                 },
             )
 
@@ -1355,6 +1358,37 @@ def run_skill_test(
 
                 # Overall pass: assertions pass AND quality is not low
                 result.passed = all_tool_passed and all_text_passed and result.quality != "low"
+
+                # Log comprehensive failure_detail event for failed prompts
+                if not result.passed:
+                    log_to_loki(
+                        f"Prompt {spec.index} failed",
+                        level="warning",
+                        labels={
+                            "prompt_index": str(spec.index),
+                            "quality": result.quality,
+                            "status": "fail",
+                        },
+                        extra={
+                            "event": "failure_detail",
+                            "prompt": prompt[:5000],
+                            "response": response_text[:5000],
+                            "tools_called": [t.name for t in tools_called],
+                            "tool_assertions": [
+                                {"desc": a[0], "passed": a[1], "detail": a[2]}
+                                for a in tool_assertions
+                            ],
+                            "text_assertions": [
+                                {"desc": a[0], "passed": a[1], "detail": a[2]}
+                                for a in text_assertions
+                            ],
+                            "quality": result.quality,
+                            "tool_accuracy": result.tool_accuracy,
+                            "reasoning": result.reasoning,
+                            "refinement_suggestion": result.refinement_suggestion,
+                            "expectation_suggestion": result.expectation_suggestion,
+                        },
+                    )
 
                 # Update prompt span with results
                 if prompt_span:
