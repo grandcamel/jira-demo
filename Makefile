@@ -1,6 +1,11 @@
-.PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset \
+.PHONY: dev dev-down build deploy logs logs-queue logs-nginx health reset-sandbox seed-sandbox clean otel-logs otel-reset \
+	invite invite-list invite-info invite-revoke ssl-setup ssl-renew shell-queue shell-demo \
+	test-landing test-terminal run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local invite-local \
-	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks
+	logs-errors-local traces-errors-local help
+
+# Docker network for telemetry (external network shared with compose)
+DEMO_NETWORK ?= demo-telemetry-network
 
 # Load environment variables
 ifneq (,$(wildcard ./secrets/.env))
@@ -207,7 +212,7 @@ queue-reset-local:
 	docker-compose restart queue-manager
 
 invite-local:
-	@docker-compose exec -T queue-manager node /app/invite-cli.js generate --expires $(or $(EXPIRES),48h) $(if $(TOKEN),--token "$(TOKEN)",) $(if $(LABEL),--label "$(LABEL)",)
+	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml exec -T queue-manager node /app/invite-cli.js generate --expires $(or $(EXPIRES),48h) $(if $(TOKEN),--token "$(TOKEN)",) $(if $(LABEL),--label "$(LABEL)",)
 
 logs-errors-local:
 	@docker-compose logs --tail=100 2>&1 | grep -iE 'error|failed|exception' || echo "No errors found"
@@ -252,8 +257,6 @@ JIRA_DIST_PATH = $(JIRA_SKILLS_PATH)/dist
 # Session persistence directories for fork feature
 CLAUDE_SESSIONS_DIR ?= /tmp/claude-sessions
 CHECKPOINTS_DIR ?= /tmp/checkpoints
-# Docker network for telemetry (external network shared with compose)
-DEMO_NETWORK ?= demo-telemetry-network
 test-skill-dev:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-dev SCENARIO=<name> [PROMPT_INDEX=N] [FIX_CONTEXT=1]"; exit 1; fi
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
@@ -405,6 +408,7 @@ help:
 	@echo "  make invite EXPIRES=7d       - Generate invite URL (default: 48h)"
 	@echo "  make invite TOKEN=demo LABEL='Demo' - Generate vanity URL (/demo)"
 	@echo "  make invite EXPIRES=24h LABEL='Workshop' - Generate with label"
+	@echo "  make invite-local            - Generate invite for local dev"
 	@echo "  make invite-list             - List all invites"
 	@echo "  make invite-list STATUS=pending - List by status"
 	@echo "  make invite-info TOKEN=xxx   - Show invite details"
