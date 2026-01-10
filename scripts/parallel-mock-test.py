@@ -155,7 +155,7 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
         "-c",
     ]
 
-    # Inner command: install lib + wheel (for jira CLI), symlink plugin, run test with fix-context
+    # Inner command: install lib + wheel (for jira-as CLI), symlink plugin, run test with fix-context
     inner_cmd = (
         "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; "
         "rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "

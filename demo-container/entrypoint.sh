@@ -111,7 +111,7 @@ trap cleanup EXIT
 echo -e "${CYAN}Installing JIRA Assistant Skills...${NC}"
 if pip install --quiet --no-cache-dir jira-assistant-skills 2>/dev/null; then
     CLI_VERSION=$(pip show jira-assistant-skills 2>/dev/null | grep Version | cut -d' ' -f2)
-    echo -e "  ${GREEN}✓${NC} jira CLI v${CLI_VERSION} installed"
+    echo -e "  ${GREEN}✓${NC} jira-as CLI v${CLI_VERSION} installed"
 else
     echo -e "  ${YELLOW}⚠${NC} CLI installation failed"
 fi
