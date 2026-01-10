@@ -144,15 +144,18 @@ shell-queue:
 
 shell-demo:
 	$(call check_claude_auth)
-	docker run -it --rm \
+	docker run $(if $(PROMPT),--rm,-it --rm) \
 		--network $(DEMO_NETWORK) \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		-e ANTHROPIC_MODEL=$(or $(MODEL),opus) \
 		$(CLAUDE_AUTH_ENV) \
-		jira-demo-container:latest
+		$(if $(PROMPT),--entrypoint bash,) \
+		jira-demo-container:latest \
+		$(if $(PROMPT),-c 'claude --permission-mode $(or $(PERMISSION_MODE),bypassPermissions) --print "$(PROMPT)"',)
 
 # Testing
 test-landing:
