@@ -1,4 +1,4 @@
-.PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset check-token refresh-token \
+.PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
 	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks
 
@@ -6,6 +6,14 @@
 ifneq (,$(wildcard ./secrets/.env))
     include ./secrets/.env
     export
+endif
+
+# macOS Keychain fallback for CLAUDE_CODE_OAUTH_TOKEN
+# If not set in env and running on macOS, try to retrieve from Keychain
+ifeq ($(shell uname -s),Darwin)
+    ifndef CLAUDE_CODE_OAUTH_TOKEN
+        CLAUDE_CODE_OAUTH_TOKEN := $(shell security find-generic-password -a "$$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w 2>/dev/null)
+    endif
 endif
 
 # Development
@@ -84,36 +92,27 @@ ssl-setup:
 ssl-renew:
 	certbot renew
 
-# Maintenance
-check-token:
-	@expires=$$(jq -r '.claudeAiOauth.expiresAt' secrets/.credentials.json 2>/dev/null); \
-	if [ -z "$$expires" ] || [ "$$expires" = "null" ]; then \
-		echo "❌ No OAuth token found in secrets/.credentials.json"; exit 1; \
-	fi; \
-	now=$$(date +%s)000; \
-	remaining=$$(( ($$expires - $$now) / 1000 / 60 )); \
-	if [ $$remaining -lt 0 ]; then \
-		echo "❌ Token EXPIRED ($$(( $$remaining * -1 )) minutes ago)"; exit 1; \
-	elif [ $$remaining -lt 60 ]; then \
-		echo "⚠️  Token expires in $$remaining minutes - renew soon"; \
-	else \
-		echo "✓ Token valid for $$remaining minutes ($$(( $$remaining / 60 )) hours)"; \
+# Authentication validation helper
+# Requires CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY to be set
+# On macOS, will auto-retrieve from Keychain if stored there
+define check_claude_auth
+	@if [ -z "$(CLAUDE_CODE_OAUTH_TOKEN)" ] && [ -z "$(ANTHROPIC_API_KEY)" ]; then \
+		echo "❌ No Claude authentication configured"; \
+		echo ""; \
+		echo "Set one of:"; \
+		echo "  export CLAUDE_CODE_OAUTH_TOKEN=...  # Pro/Max subscription (run 'claude setup-token')"; \
+		echo "  export ANTHROPIC_API_KEY=...        # API key"; \
+		if [ "$$(uname -s)" = "Darwin" ]; then \
+			echo ""; \
+			echo "On macOS, you can also store in Keychain:"; \
+			echo "  security add-generic-password -a \"\$$USER\" -s \"CLAUDE_CODE_OAUTH_TOKEN\" -w \"<token>\""; \
+		fi; \
+		exit 1; \
 	fi
+endef
 
-refresh-token:
-	@mkdir -p secrets
-	@echo "Starting Claude for authentication..."
-	@echo "Exit Claude after login completes (Ctrl+C or type 'exit')"
-	@docker run -it --rm \
-		--user root \
-		--entrypoint bash \
-		-v $(PWD)/secrets:/home/devuser/.claude \
-		jira-demo-container:latest \
-		-c "chown -R devuser:node /home/devuser/.claude && su devuser -c 'claude'"
-	@echo ""
-	@echo "✓ Credentials saved to secrets/"
-	@chmod 644 secrets/.credentials.json secrets/.claude.json 2>/dev/null || true
-	@$(MAKE) check-token
+# Build auth env vars for docker run
+CLAUDE_AUTH_ENV = $(if $(CLAUDE_CODE_OAUTH_TOKEN),-e CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN),$(if $(ANTHROPIC_API_KEY),-e ANTHROPIC_API_KEY=$(ANTHROPIC_API_KEY),))
 
 clean:
 	docker-compose down -v
@@ -137,6 +136,7 @@ shell-queue:
 	docker-compose exec queue-manager sh
 
 shell-demo:
+	$(call check_claude_auth)
 	docker run -it --rm \
 		--network $(DEMO_NETWORK) \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
@@ -144,8 +144,7 @@ shell-demo:
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
-		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
-		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		$(CLAUDE_AUTH_ENV) \
 		jira-demo-container:latest
 
 # Testing
@@ -160,6 +159,7 @@ test-terminal:
 #        make run-scenario SCENARIO=search DELAY=5
 run-scenario:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make run-scenario SCENARIO=<name> [DELAY=3]"; echo "Scenarios: issue, search, agile, jsm, admin, bulk, collaborate, dev, fields, relationships, time"; exit 1; fi
+	$(call check_claude_auth)
 	docker run --rm --entrypoint bash \
 		--network $(DEMO_NETWORK) \
 		-e TERM=xterm \
@@ -168,8 +168,7 @@ run-scenario:
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
 		-e AUTOPLAY_DEBUG=true \
 		-e OTEL_ENDPOINT=http://lgtm:3100 \
-		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
-		-v $(PWD)/secrets/.claude.json:/tmp/.claude.json.source:ro \
+		$(CLAUDE_AUTH_ENV) \
 		jira-demo-container:latest \
 		-c "/workspace/autoplay.sh --auto-advance --delay $(or $(DELAY),3) --debug $(SCENARIO)"
 
@@ -217,6 +216,7 @@ traces-errors-local:
 #        make test-skill SCENARIO=search VERBOSE=1
 test-skill:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill SCENARIO=<name> [MODEL=sonnet] [JUDGE_MODEL=haiku] [VERBOSE=1]"; exit 1; fi
+	$(call check_claude_auth)
 	docker run --rm \
 		--network $(DEMO_NETWORK) \
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
@@ -224,8 +224,7 @@ test-skill:
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
-		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
-		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		$(CLAUDE_AUTH_ENV) \
 		jira-demo-container:latest \
 		python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
 			--model $(or $(MODEL),sonnet) \
@@ -253,6 +252,7 @@ DEMO_NETWORK ?= demo-telemetry-network
 test-skill-dev:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-dev SCENARIO=<name> [PROMPT_INDEX=N] [FIX_CONTEXT=1]"; exit 1; fi
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	$(call check_claude_auth)
 	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
 	@docker run --rm \
 		--network $(DEMO_NETWORK) \
@@ -261,8 +261,7 @@ test-skill-dev:
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
-		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
-		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		$(CLAUDE_AUTH_ENV) \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
 		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
@@ -291,13 +290,13 @@ test-skill-dev:
 # Usage: make test-skill-mock SCENARIO=search
 test-skill-mock:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-mock SCENARIO=<name> [MODEL=sonnet] [JUDGE_MODEL=haiku]"; exit 1; fi
+	$(call check_claude_auth)
 	docker run --rm \
 		--network $(DEMO_NETWORK) \
 		-e JIRA_MOCK_MODE=true \
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
-		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
-		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		$(CLAUDE_AUTH_ENV) \
 		jira-demo-container:latest \
 		python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
 			--model $(or $(MODEL),sonnet) \
@@ -313,6 +312,7 @@ test-skill-mock:
 test-skill-mock-dev:
 	@if [ -z "$(SCENARIO)" ]; then echo "Usage: make test-skill-mock-dev SCENARIO=<name> [PROMPT_INDEX=N]"; exit 1; fi
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	$(call check_claude_auth)
 	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
 	@docker run --rm \
 		--network $(DEMO_NETWORK) \
@@ -320,8 +320,7 @@ test-skill-mock-dev:
 		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
 		-e LOKI_ENDPOINT=http://lgtm:3100 \
 		-e PYTHONPATH=/workspace/patches \
-		-v $(PWD)/secrets/.credentials.json:/home/devuser/.claude/.credentials.json:ro \
-		-v $(PWD)/secrets/.claude.json:/home/devuser/.claude/.claude.json:ro \
+		$(CLAUDE_AUTH_ENV) \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
 		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
@@ -423,9 +422,11 @@ help:
 	@echo "  make test-all-mocks SCENARIOS=search,issue - Run specific scenarios"
 	@echo ""
 	@echo "Maintenance:"
-	@echo "  make check-token    - Check Claude OAuth token expiration"
-	@echo "  make refresh-token  - Authenticate and refresh OAuth token"
 	@echo "  make clean          - Remove all containers and volumes"
 	@echo "  make ssl-setup      - Set up SSL with Let's Encrypt"
 	@echo "  make shell-queue    - Open shell in queue manager"
 	@echo "  make shell-demo     - Open shell in demo container"
+	@echo ""
+	@echo "Authentication (env vars required):"
+	@echo "  CLAUDE_CODE_OAUTH_TOKEN - Pro/Max subscription token (run 'claude setup-token')"
+	@echo "  ANTHROPIC_API_KEY       - API key (alternative to OAuth token)"
