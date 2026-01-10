@@ -10,7 +10,7 @@ One-click live demo for [JIRA Assistant Skills](https://github.com/grandcamel/ji
 - **Interactive Menu**: Choose scenarios, start Claude, or use bash shell
 - **Pre-configured**: Claude auth (OAuth token or API key) + JIRA sandbox ready to use
 - **Guided Scenarios**: Issue management, JQL search, Agile, JSM, observability (rendered with [glow](https://github.com/charmbracelet/glow))
-- **Hands-free Mode**: Claude runs with `--dangerously-skip-permissions` for seamless demos
+- **Hands-free Mode**: Claude runs with `--permission-mode bypassPermissions` for seamless demos
 - **Auto-cleanup**: JIRA sandbox resets between sessions
 - **Full Observability**: Integrated Grafana dashboards with metrics, traces, and logs
 
@@ -196,8 +196,14 @@ make refine-skill SCENARIO=search             # Automated fix loop
 # Invite Management
 make invite                      # Generate invite (default 48h)
 make invite EXPIRES=7d           # Generate with custom expiration
+make invite-local                # Generate invite for local dev
 make invite-list                 # List all invites
 make invite-revoke TOKEN=abc123  # Revoke an invite
+
+# Interactive Shell
+make shell-demo                  # Interactive demo container
+make shell-demo PROMPT="..."     # Run prompt non-interactively
+make shell-demo MODEL=sonnet     # Override default model (opus)
 ```
 
 ### Testing Locally
@@ -207,7 +213,7 @@ make invite-revoke TOKEN=abc123  # Revoke an invite
 make dev
 
 # Generate an invite and open it
-make invite
+make invite-local
 # Opens: http://localhost:8080/{TOKEN}
 ```
 
@@ -244,10 +250,15 @@ make refine-skill SCENARIO=search
 Multiple skill tests can run simultaneously - all containers share the `demo-telemetry-network` for telemetry:
 
 ```bash
-# Run multiple scenarios in parallel
+# Run all mock scenarios in parallel (recommended)
+make test-all-mocks
+
+# Run specific scenarios
+make test-all-mocks SCENARIOS=search,issue,agile
+
+# Manual parallel execution
 make test-skill-dev SCENARIO=search &
 make test-skill-dev SCENARIO=issue &
-make test-skill-dev SCENARIO=agile &
 wait
 ```
 
