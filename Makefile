@@ -121,6 +121,42 @@ endef
 # Build auth env vars for docker run
 CLAUDE_AUTH_ENV = $(if $(CLAUDE_CODE_OAUTH_TOKEN),-e CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN),$(if $(ANTHROPIC_API_KEY),-e ANTHROPIC_API_KEY=$(ANTHROPIC_API_KEY),))
 
+# Common docker run command for skill tests with local mounts
+# Parameters: $(1) = extra env vars, $(2) = extra volumes, $(3) = extra test args
+define skill_test_docker_run
+	docker run --rm \
+		--network $(DEMO_NETWORK) \
+		$(1) \
+		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
+		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		$(CLAUDE_AUTH_ENV) \
+		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
+		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
+		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
+		-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro \
+		-v $(PWD)/demo-container/scenarios:/workspace/scenarios:ro \
+		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
+		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
+		$(2) \
+		--entrypoint bash \
+		jira-demo-container:latest \
+		-c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; \
+		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
+		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
+		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
+		    --model $(or $(MODEL),sonnet) \
+		    --judge-model $(or $(JUDGE_MODEL),haiku) \
+		    $(3) \
+		    $(if $(VERBOSE),--verbose,) \
+		    $(if $(JSON),--json,) \
+		    $(if $(PROMPT_INDEX),--prompt-index $(PROMPT_INDEX),) \
+		    $(if $(CONVERSATION),--conversation,) \
+		    $(if $(FAIL_FAST),--fail-fast,) \
+		    $(if $(CONVERSATION),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json,) \
+		    $(if $(FORK_FROM),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json --fork-from $(FORK_FROM),) \
+		    $(if $(FIX_CONTEXT),--fix-context $(JIRA_SKILLS_PATH),)"
+endef
+
 clean:
 	docker-compose down -v
 	docker system prune -f
@@ -265,37 +301,7 @@ test-skill-dev:
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
 	$(call check_claude_auth)
 	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
-	@docker run --rm \
-		--network $(DEMO_NETWORK) \
-		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
-		-e JIRA_EMAIL=$(JIRA_EMAIL) \
-		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
-		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
-		-e LOKI_ENDPOINT=http://lgtm:3100 \
-		$(CLAUDE_AUTH_ENV) \
-		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
-		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
-		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
-		-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro \
-		-v $(PWD)/demo-container/scenarios:/workspace/scenarios:ro \
-		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
-		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
-		--entrypoint bash \
-		jira-demo-container:latest \
-		-c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; \
-		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
-		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
-		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
-		    --model $(or $(MODEL),sonnet) \
-		    --judge-model $(or $(JUDGE_MODEL),haiku) \
-		    $(if $(VERBOSE),--verbose,) \
-		    $(if $(JSON),--json,) \
-		    $(if $(PROMPT_INDEX),--prompt-index $(PROMPT_INDEX),) \
-		    $(if $(CONVERSATION),--conversation,) \
-		    $(if $(FAIL_FAST),--fail-fast,) \
-		    $(if $(CONVERSATION),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json,) \
-		    $(if $(FORK_FROM),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json --fork-from $(FORK_FROM),) \
-		    $(if $(FIX_CONTEXT),--fix-context $(JIRA_SKILLS_PATH),)"
+	@$(call skill_test_docker_run,-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) -e JIRA_EMAIL=$(JIRA_EMAIL) -e JIRA_SITE_URL=$(JIRA_SITE_URL),,)
 
 # Run skill test with mocked JIRA API (fast, deterministic)
 # Usage: make test-skill-mock SCENARIO=search
@@ -325,37 +331,7 @@ test-skill-mock-dev:
 	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
 	$(call check_claude_auth)
 	@mkdir -p $(CLAUDE_SESSIONS_DIR) $(CHECKPOINTS_DIR)
-	@docker run --rm \
-		--network $(DEMO_NETWORK) \
-		-e JIRA_MOCK_MODE=true \
-		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
-		-e LOKI_ENDPOINT=http://lgtm:3100 \
-		-e PYTHONPATH=/workspace/patches \
-		$(CLAUDE_AUTH_ENV) \
-		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
-		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
-		-v $(JIRA_DIST_PATH):/opt/jira-dist:ro \
-		-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro \
-		-v $(PWD)/demo-container/scenarios:/workspace/scenarios:ro \
-		-v $(PWD)/demo-container/patches:/workspace/patches:ro \
-		-v $(CLAUDE_SESSIONS_DIR):/home/devuser/.claude/projects:rw \
-		-v $(CHECKPOINTS_DIR):/tmp/checkpoints:rw \
-		--entrypoint bash \
-		jira-demo-container:latest \
-		-c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; \
-		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
-		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
-		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
-		    --model $(or $(MODEL),sonnet) \
-		    --judge-model $(or $(JUDGE_MODEL),haiku) \
-		    --mock \
-		    $(if $(VERBOSE),--verbose,) \
-		    $(if $(JSON),--json,) \
-		    $(if $(PROMPT_INDEX),--prompt-index $(PROMPT_INDEX),) \
-		    $(if $(CONVERSATION),--conversation,) \
-		    $(if $(FAIL_FAST),--fail-fast,) \
-		    $(if $(CONVERSATION),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json,) \
-		    $(if $(FORK_FROM),--checkpoint-file /tmp/checkpoints/$(SCENARIO).json --fork-from $(FORK_FROM),)"
+	@$(call skill_test_docker_run,-e JIRA_MOCK_MODE=true -e PYTHONPATH=/workspace/patches,-v $(PWD)/demo-container/patches:/workspace/patches:ro,--mock)
 
 # Skill refinement loop - iteratively test and fix skills
 # Uses checkpoint-based iteration: fail-fast, fork from checkpoint, single fix session

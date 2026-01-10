@@ -10,6 +10,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/demo.dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/locations.conf:/etc/nginx/conf.d/locations.conf:ro
       - ./landing-page:/var/www/html:ro
       - nginx-logs:/var/log/nginx
       # No SSL certificates for local dev
