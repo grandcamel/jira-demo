@@ -19,16 +19,16 @@ SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-60}"
 SESSION_TIMEOUT_SECONDS=$((SESSION_TIMEOUT_MINUTES * 60))
 
 # Setup Claude authentication
-# OAuth token requires .claude.json with hasCompletedOnboarding
+# OAuth token requires .claude.json with hasCompletedOnboarding and bypassPermissionsModeAccepted
 if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
     mkdir -p /home/devuser/.claude
     CLAUDE_JSON="/home/devuser/.claude/.claude.json"
     if [ -f "$CLAUDE_JSON" ]; then
-        # Merge hasCompletedOnboarding into existing file
-        jq '. + {hasCompletedOnboarding: true}' "$CLAUDE_JSON" > "${CLAUDE_JSON}.tmp" && mv "${CLAUDE_JSON}.tmp" "$CLAUDE_JSON"
+        # Merge settings into existing file
+        jq '. + {hasCompletedOnboarding: true, bypassPermissionsModeAccepted: true}' "$CLAUDE_JSON" > "${CLAUDE_JSON}.tmp" && mv "${CLAUDE_JSON}.tmp" "$CLAUDE_JSON"
     else
         # Create new file
-        echo '{"hasCompletedOnboarding": true}' > "$CLAUDE_JSON"
+        echo '{"hasCompletedOnboarding": true, "bypassPermissionsModeAccepted": true}' > "$CLAUDE_JSON"
     fi
     chmod 600 "$CLAUDE_JSON"
 fi
