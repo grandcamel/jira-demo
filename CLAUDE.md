@@ -32,7 +32,7 @@ make reset-sandbox                    # Reset JIRA sandbox
 ## Gotchas
 
 - **Claude auth via OAuth token**: Uses `CLAUDE_CODE_OAUTH_TOKEN` env var (not credential file mounts). On macOS, Makefile auto-retrieves from Keychain if not set. Store with: `security add-generic-password -a "$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w "<token>"`. Get token via `claude setup-token`.
-- **OAuth token needs hasCompletedOnboarding**: OAuth token auth requires `.claude.json` with `{"hasCompletedOnboarding": true}`. The demo-container entrypoint creates this automatically when `CLAUDE_CODE_OAUTH_TOKEN` is set.
+- **OAuth token needs .claude.json flags**: OAuth token auth requires `.claude.json` with `hasCompletedOnboarding` and `bypassPermissionsModeAccepted` set to true. The demo-container entrypoint creates this automatically when `CLAUDE_CODE_OAUTH_TOKEN` is set.
 - **OAuth token expires**: Run `make check-token` before skill tests. If expired, run `/refresh-token`.
 - **JIRA keys auto-increment**: Reseeding creates new keys (DEMO-84+), not DEMO-1. Prompts must use current keys.
 - **Rebuild after prompt changes**: Container caches scenarios. Run `make build` after editing `.prompts` files.
@@ -90,7 +90,7 @@ make reset-sandbox                    # Reset JIRA sandbox
 **Expected tool sequences:**
 | Scenario | Expected Tools | Notes |
 |----------|---------------|-------|
-| First JIRA query in conversation | `['Skill', 'Bash']` | Skill loads context, Bash runs `jira` CLI |
+| First JIRA query in conversation | `['Skill', 'Bash']` | Skill loads context, Bash runs `jira-as` CLI |
 | Subsequent JIRA queries | `['Bash']` | Context already loaded, just run CLI |
 | Knowledge question (no execution) | `['Skill']` | Only needs context, no CLI execution |
 
@@ -128,6 +128,7 @@ nginx --> queue-manager --> ttyd --> demo-container
 | Parallel (specific) | `make test-all-mocks SCENARIOS=search,issue` |
 | Refine skills | `make refine-skill SCENARIO=search` |
 | Shell access | `make shell-queue` / `make shell-demo` |
+| Run prompt non-interactively | `make shell-demo PROMPT="..." MODEL=opus` |
 | Verify mock activation | See "Mock Mode Debugging" section |
 | Test script directly | See "Mock Mode Debugging" section |
 
@@ -264,17 +265,10 @@ make test-all-mocks MAX_WORKERS=6 VERBOSE=1
 
 **Key details:**
 - Uses `scripts/parallel-mock-test.py` orchestrator
-- Generates `PLAN-{scenario}-mock.md` for each failure with fix context
 - All containers share `demo-telemetry-network` for telemetry
-- 10-minute timeout per scenario
+- 20-minute timeout per scenario
 - Exit code 0 if all pass, 1 if any fail
-
-**PLAN file contents:**
-- Summary with quality rating (high/medium/low)
-- Failure details: prompt text, tools called, tool accuracy
-- Failed assertions table with pass/fail status
-- Judge analysis: reasoning, refinement suggestion, expectation suggestion
-- Test commands for iteration
+- Use `--fix-context` flag to output JSON for debugging failures
 
 ## Skill Test Iteration Workflow
 
