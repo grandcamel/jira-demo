@@ -114,14 +114,17 @@ deploy() {
         exit 1
     fi
 
-    if [ ! -f "secrets/.claude.json" ]; then
-        echo_error "secrets/.claude.json not found"
-        echo "Copy secrets/example.claude.json to secrets/.claude.json and configure"
-        exit 1
-    fi
-
     # Load environment
     source secrets/.env
+
+    # Verify Claude authentication
+    if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+        echo_error "No Claude authentication configured"
+        echo "Set CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY in secrets/.env"
+        echo "  CLAUDE_CODE_OAUTH_TOKEN=...  # From 'claude setup-token'"
+        echo "  ANTHROPIC_API_KEY=...        # API key"
+        exit 1
+    fi
 
     # Pull latest images
     echo_info "Pulling base images..."
