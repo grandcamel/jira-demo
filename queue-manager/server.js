@@ -50,8 +50,9 @@ const SESSION_TIMEOUT_MINUTES = parseInt(process.env.SESSION_TIMEOUT_MINUTES) ||
 const MAX_QUEUE_SIZE = parseInt(process.env.MAX_QUEUE_SIZE) || 10;
 const AVERAGE_SESSION_MINUTES = 45;
 const TTYD_PORT = 7681;
-const CLAUDE_CREDENTIALS_PATH = process.env.CLAUDE_CREDENTIALS_PATH || '/opt/jira-demo/secrets/.credentials.json';
-const CLAUDE_CONFIG_PATH = process.env.CLAUDE_CONFIG_PATH || '/opt/jira-demo/secrets/.claude.json';
+// Claude authentication - OAuth token (preferred) or API key
+const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN || '';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-me-in-production';
 
 // =============================================================================
@@ -856,8 +857,9 @@ async function startSession(ws, client) {
       '-e', `AUTOPLAY_DEBUG=${process.env.AUTOPLAY_DEBUG || 'false'}`,
       '-e', `AUTOPLAY_SHOW_TOOLS=${process.env.AUTOPLAY_SHOW_TOOLS || 'false'}`,
       '-e', `OTEL_ENDPOINT=${process.env.OTEL_ENDPOINT || ''}`,
-      '-v', `${CLAUDE_CREDENTIALS_PATH}:/home/devuser/.claude/.credentials.json:ro`,
-      '-v', `${CLAUDE_CONFIG_PATH}:/tmp/.claude.json.source:ro`,
+      // Claude authentication - pass token as env var (container handles .claude.json setup)
+      ...(CLAUDE_CODE_OAUTH_TOKEN ? ['-e', `CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}`] : []),
+      ...(ANTHROPIC_API_KEY ? ['-e', `ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}`] : []),
       'jira-demo-container:latest'
     ], {
       stdio: ['pipe', 'pipe', 'pipe']

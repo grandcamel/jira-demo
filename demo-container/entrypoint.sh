@@ -18,10 +18,19 @@ NC='\033[0m'
 SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-60}"
 SESSION_TIMEOUT_SECONDS=$((SESSION_TIMEOUT_MINUTES * 60))
 
-# Copy Claude config from mounted source (allows Claude to write to it)
-if [ -f /tmp/.claude.json.source ]; then
-    cp /tmp/.claude.json.source /home/devuser/.claude/.claude.json
-    chmod 644 /home/devuser/.claude/.claude.json
+# Setup Claude authentication
+# OAuth token requires .claude.json with hasCompletedOnboarding
+if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+    mkdir -p /home/devuser/.claude
+    CLAUDE_JSON="/home/devuser/.claude/.claude.json"
+    if [ -f "$CLAUDE_JSON" ]; then
+        # Merge hasCompletedOnboarding into existing file
+        jq '. + {hasCompletedOnboarding: true}' "$CLAUDE_JSON" > "${CLAUDE_JSON}.tmp" && mv "${CLAUDE_JSON}.tmp" "$CLAUDE_JSON"
+    else
+        # Create new file
+        echo '{"hasCompletedOnboarding": true}' > "$CLAUDE_JSON"
+    fi
+    chmod 600 "$CLAUDE_JSON"
 fi
 
 # Display welcome message
@@ -31,10 +40,12 @@ cat /etc/motd
 # Verify Claude credentials
 echo -e "${CYAN}Checking connections...${NC}"
 
-if [ -f /home/devuser/.claude/.credentials.json ]; then
-    echo -e "  ${GREEN}✓${NC} Claude credentials loaded"
+if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+    echo -e "  ${GREEN}✓${NC} Claude OAuth token configured"
+elif [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    echo -e "  ${GREEN}✓${NC} Claude API key configured"
 else
-    echo -e "  ${YELLOW}⚠${NC} Claude credentials not found (OAuth may prompt)"
+    echo -e "  ${YELLOW}⚠${NC} No Claude credentials (set CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)"
 fi
 
 # Verify JIRA connection
