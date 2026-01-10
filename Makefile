@@ -1,5 +1,5 @@
 .PHONY: dev build deploy logs health reset-sandbox clean otel-logs otel-reset \
-	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local \
+	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local invite-local \
 	logs-errors-local traces-errors-local run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks
 
 # Load environment variables
@@ -15,12 +15,14 @@ ifeq ($(shell uname -s),Darwin)
         CLAUDE_CODE_OAUTH_TOKEN := $(shell security find-generic-password -a "$$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w 2>/dev/null)
     endif
 endif
+# Export for docker-compose to use
+export CLAUDE_CODE_OAUTH_TOKEN
 
 # Development
 dev:
 	@echo "Starting development environment..."
 	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+	CLAUDE_CODE_OAUTH_TOKEN="$(CLAUDE_CODE_OAUTH_TOKEN)" docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 dev-down:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
@@ -37,10 +39,10 @@ build:
 deploy:
 	@echo "Deploying to production..."
 	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
-	docker-compose pull
-	docker-compose build
+	CLAUDE_CODE_OAUTH_TOKEN="$(CLAUDE_CODE_OAUTH_TOKEN)" docker-compose pull
+	CLAUDE_CODE_OAUTH_TOKEN="$(CLAUDE_CODE_OAUTH_TOKEN)" docker-compose build
 	docker-compose down
-	docker-compose up -d
+	CLAUDE_CODE_OAUTH_TOKEN="$(CLAUDE_CODE_OAUTH_TOKEN)" docker-compose up -d
 	@echo "Waiting for services..."
 	@sleep 5
 	@$(MAKE) health
@@ -189,7 +191,7 @@ health-local:
 
 start-local:
 	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+	CLAUDE_CODE_OAUTH_TOKEN="$(CLAUDE_CODE_OAUTH_TOKEN)" docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 stop-local:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
@@ -203,6 +205,9 @@ queue-status-local:
 queue-reset-local:
 	@echo "Resetting local queue..."
 	docker-compose restart queue-manager
+
+invite-local:
+	@docker-compose exec -T queue-manager node /app/invite-cli.js generate --expires $(or $(EXPIRES),48h) $(if $(TOKEN),--token "$(TOKEN)",) $(if $(LABEL),--label "$(LABEL)",)
 
 logs-errors-local:
 	@docker-compose logs --tail=100 2>&1 | grep -iE 'error|failed|exception' || echo "No errors found"

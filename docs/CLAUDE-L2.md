@@ -114,9 +114,18 @@ SESSION_TIMEOUT_MINUTES=60  # Optional, default 60
 MAX_QUEUE_SIZE=10           # Optional, default 10
 ```
 
-**Claude files** (both required):
-- `secrets/.credentials.json` - OAuth tokens (copy from `~/.claude/.credentials.json`)
-- `secrets/.claude.json` - Config/settings (copy from `~/.claude/.claude.json`)
+**Claude authentication** (one required):
+- `CLAUDE_CODE_OAUTH_TOKEN` - OAuth token from Pro/Max subscription (run `claude setup-token`)
+- `ANTHROPIC_API_KEY` - API key (alternative to OAuth token)
+
+On macOS, the Makefile auto-retrieves `CLAUDE_CODE_OAUTH_TOKEN` from Keychain if not set:
+```bash
+# Store token in Keychain
+security add-generic-password -a "$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w "<token>"
+
+# Verify
+security find-generic-password -a "$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w
+```
 
 **Debug environment variables:**
 - `AUTOPLAY_DEBUG=true` - Enable debug logging

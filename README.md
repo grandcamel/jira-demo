@@ -8,7 +8,7 @@ One-click live demo for [JIRA Assistant Skills](https://github.com/grandcamel/ji
 - **Queue System**: Single-user sessions with waitlist
 - **Invite Access**: Token-based URLs for controlled demo access
 - **Interactive Menu**: Choose scenarios, start Claude, or use bash shell
-- **Pre-configured**: Claude OAuth + JIRA sandbox ready to use
+- **Pre-configured**: Claude auth (OAuth token or API key) + JIRA sandbox ready to use
 - **Guided Scenarios**: Issue management, JQL search, Agile, JSM, observability (rendered with [glow](https://github.com/charmbracelet/glow))
 - **Hands-free Mode**: Claude runs with `--dangerously-skip-permissions` for seamless demos
 - **Auto-cleanup**: JIRA sandbox resets between sessions
@@ -43,13 +43,16 @@ cd jira-demo
 
 # Copy example secrets
 cp secrets/example.env secrets/.env
-cp secrets/example.credentials.json secrets/.credentials.json
-cp secrets/example.claude.json secrets/.claude.json
 
-# Edit secrets with your credentials
-# - secrets/.env: JIRA credentials
-# - secrets/.credentials.json: Claude OAuth tokens (from ~/.claude/.credentials.json)
-# - secrets/.claude.json: Claude config (from ~/.claude/.claude.json)
+# Edit secrets/.env with your JIRA credentials
+
+# Set Claude authentication (one of):
+export CLAUDE_CODE_OAUTH_TOKEN="..."  # From 'claude setup-token'
+# OR
+export ANTHROPIC_API_KEY="..."        # API key
+
+# On macOS, you can store the token in Keychain for auto-retrieval:
+security add-generic-password -a "$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w "<token>"
 
 # Start services
 make dev
@@ -64,7 +67,7 @@ make dev
 1. DigitalOcean account
 2. Domain pointing to droplet IP
 3. JIRA API token for jasonkrue.atlassian.net
-4. Claude OAuth tokens (from `claude login`)
+4. Claude OAuth token (run `claude setup-token`) or API key
 
 ### Setup
 
@@ -78,13 +81,7 @@ cd /opt/jira-demo
 
 # Configure secrets
 cp secrets/example.env secrets/.env
-vim secrets/.env  # Add JIRA credentials
-
-cp secrets/example.credentials.json secrets/.credentials.json
-vim secrets/.credentials.json  # Add Claude OAuth tokens
-
-cp secrets/example.claude.json secrets/.claude.json
-vim secrets/.claude.json  # Add Claude config
+vim secrets/.env  # Add JIRA credentials + CLAUDE_CODE_OAUTH_TOKEN
 
 # Deploy
 make deploy
@@ -120,14 +117,21 @@ MAX_QUEUE_SIZE=10
 DOMAIN=demo.jira-skills.dev
 ```
 
-### Claude Files
+### Claude Authentication
 
-Run `claude login` on your local machine, then copy both files:
+Set one of these environment variables (or add to `secrets/.env`):
 
 ```bash
-# On your local machine - copy both files to secrets/
-cp ~/.claude/.credentials.json secrets/.credentials.json
-cp ~/.claude/.claude.json secrets/.claude.json
+# Option 1: OAuth token (Pro/Max subscription)
+export CLAUDE_CODE_OAUTH_TOKEN="..."  # Run 'claude setup-token' to get this
+
+# Option 2: API key
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+**macOS Keychain** (recommended): Store the token for automatic retrieval:
+```bash
+security add-generic-password -a "$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w "<token>"
 ```
 
 ## JIRA Sandbox

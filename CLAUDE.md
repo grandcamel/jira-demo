@@ -31,6 +31,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 
 ## Gotchas
 
+- **Claude auth via OAuth token**: Uses `CLAUDE_CODE_OAUTH_TOKEN` env var (not credential file mounts). On macOS, Makefile auto-retrieves from Keychain if not set. Store with: `security add-generic-password -a "$USER" -s "CLAUDE_CODE_OAUTH_TOKEN" -w "<token>"`. Get token via `claude setup-token`.
+- **OAuth token needs hasCompletedOnboarding**: OAuth token auth requires `.claude.json` with `{"hasCompletedOnboarding": true}`. The demo-container entrypoint creates this automatically when `CLAUDE_CODE_OAUTH_TOKEN` is set.
 - **OAuth token expires**: Run `make check-token` before skill tests. If expired, run `/refresh-token`.
 - **JIRA keys auto-increment**: Reseeding creates new keys (DEMO-84+), not DEMO-1. Prompts must use current keys.
 - **Rebuild after prompt changes**: Container caches scenarios. Run `make build` after editing `.prompts` files.

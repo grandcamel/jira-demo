@@ -23,8 +23,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=development
-      - CLAUDE_CREDENTIALS_PATH=${PWD}/secrets/.credentials.json
-      - CLAUDE_CONFIG_PATH=${PWD}/secrets/.claude.json
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
       - OTEL_LOG_LEVEL=debug
       - ENABLE_AUTOPLAY=true
       - AUTOPLAY_DEBUG=true
