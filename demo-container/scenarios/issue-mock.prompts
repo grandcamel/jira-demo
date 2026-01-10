@@ -45,7 +45,7 @@ expect:
     Mock returns sequential keys starting from DEMO-101.
 ---
 prompt: |
-  Use the jira CLI to get the details of the jira bug we just created and show me its key, summary, priority, and status
+  Use the jira-as CLI to get the details of the jira bug we just created and show me its key, summary, priority, and status
 expect:
   text:
     must_contain: [DEMO-, Bug]
