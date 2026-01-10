@@ -178,11 +178,13 @@ jira-demo/
 
 ```bash
 make dev           # Start local development
+make dev-down      # Stop local development
 make build         # Build all containers
 make deploy        # Deploy to production
 make logs          # View logs
 make reset-sandbox # Reset JIRA sandbox
-make health        # Check system health
+make health        # Check production health
+make health-local  # Check local dev health
 make otel-logs     # View LGTM stack logs
 make otel-reset    # Reset observability data
 
@@ -268,8 +270,10 @@ Integrated LGTM (Loki, Grafana, Tempo, Mimir/Prometheus) stack accessible during
 
 ### Pre-built Dashboards
 
+- **Skill Test Results**: parallel test telemetry, quality ratings, judge analysis, prompt/response logs
 - **Queue Operations**: queue size, wait times, invite validation rates
 - **Session Analytics**: session duration, TTYd spawn latency, cleanup times
+- **Nginx Access Logs**: request logs, traffic analysis, error rates
 - **System Overview**: Redis metrics, container health, error rates
 
 ### Make Commands
