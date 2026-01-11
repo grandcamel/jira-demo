@@ -121,14 +121,16 @@ endef
 # Build auth env vars for docker run
 CLAUDE_AUTH_ENV = $(if $(CLAUDE_CODE_OAUTH_TOKEN),-e CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN),$(if $(ANTHROPIC_API_KEY),-e ANTHROPIC_API_KEY=$(ANTHROPIC_API_KEY),))
 
+# Telemetry env vars for LGTM stack
+TELEMETRY_ENV_VARS = -e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 -e LOKI_ENDPOINT=http://lgtm:3100
+
 # Common docker run command for skill tests with local mounts
 # Parameters: $(1) = extra env vars, $(2) = extra volumes, $(3) = extra test args
 define skill_test_docker_run
 	docker run --rm \
 		--network $(DEMO_NETWORK) \
 		$(1) \
-		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
-		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		$(TELEMETRY_ENV_VARS) \
 		$(CLAUDE_AUTH_ENV) \
 		-v $(JIRA_PLUGIN_PATH):/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
 		-v $(JIRA_LIB_PATH):/opt/jira-lib:ro \
@@ -185,8 +187,7 @@ shell-demo:
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
-		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
-		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		$(TELEMETRY_ENV_VARS) \
 		-e ANTHROPIC_MODEL=$(or $(MODEL),opus) \
 		$(CLAUDE_AUTH_ENV) \
 		$(if $(PROMPT),--entrypoint bash,) \
@@ -271,8 +272,7 @@ test-skill:
 		-e JIRA_API_TOKEN=$(JIRA_API_TOKEN) \
 		-e JIRA_EMAIL=$(JIRA_EMAIL) \
 		-e JIRA_SITE_URL=$(JIRA_SITE_URL) \
-		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
-		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		$(TELEMETRY_ENV_VARS) \
 		$(CLAUDE_AUTH_ENV) \
 		jira-demo-container:latest \
 		python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
@@ -311,8 +311,7 @@ test-skill-mock:
 	docker run --rm \
 		--network $(DEMO_NETWORK) \
 		-e JIRA_MOCK_MODE=true \
-		-e OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 \
-		-e LOKI_ENDPOINT=http://lgtm:3100 \
+		$(TELEMETRY_ENV_VARS) \
 		$(CLAUDE_AUTH_ENV) \
 		jira-demo-container:latest \
 		python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
