@@ -17,7 +17,7 @@ RUN curl -fsSL -o /usr/local/bin/ttyd \
 
 # Install Python dependencies for cleanup script
 RUN pip3 install --break-system-packages --no-cache-dir \
-    jira-assistant-skills-lib>=0.2.3 \
+    jira-assistant-skills>=1.0.0 \
     requests
 
 WORKDIR /app

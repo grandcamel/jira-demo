@@ -52,17 +52,16 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Stat panel query type**: Grafana executes Loki metric queries as range queries by default, evaluating at multiple timestamps with overlapping windows. This causes stat panels to show ~60-100x inflated counts. Fix: add `"queryType": "instant"` to stat panel targets in dashboard JSON. Validate with direct Loki query: `curl 'http://localhost:3100/loki/api/v1/query' --data-urlencode 'query=sum(count_over_time({job="skill-test"} |= \`test_complete\` [1h]))'`.
 - **Loki high cardinality**: Queries without aggregation may hit "maximum number of series (500) reached" error due to label combinations (scenario × level × prompt_index × quality). Always use `sum()` or filter by specific labels.
 - **Skill routing failures**: Common test failure pattern: jira-assistant hub routes to `jira-assistant-setup` instead of specific skills (`jira-search`, `jira-issue`, `jira-fields`). Check skill descriptions and routing logic.
-- **Plugin cache embeds library copies**: The container's Claude plugin cache (`~/.claude/plugins/cache/jira-assistant-skills/.../skills/shared/scripts/lib/`) contains its **own embedded copy** of `jira-assistant-skills-lib`. Changes to the standalone lib repo don't affect the plugin until: (1) lib PR merged, (2) plugin updated to use new lib, (3) plugin published to GitHub, (4) container rebuilt.
-- **Library changes need plugin update**: Changes to `jira-assistant-skills-lib` source aren't picked up by `make build` alone. The plugin pulls from GitHub, which has its own bundled library. To test lib changes: mount patched files into container or update the plugin's embedded lib.
-- **Mock mode requires get_jira_client() check**: The `is_mock_mode()` check must be in the `get_jira_client()` convenience function (config_manager.py), not just ConfigManager methods. Skills call the convenience function via `from jira_assistant_skills_lib import get_jira_client`. Check BOTH the standalone lib AND the plugin's embedded copy.
-- **Verify library version in container**: To check which library the container actually uses: `docker run --entrypoint bash jira-demo-container:latest -c 'grep -A5 "def get_jira_client" ~/.claude/plugins/cache/jira-assistant-skills/*/skills/shared/scripts/lib/config_manager.py'`
+- **Plugin is documentation-only**: The JIRA Assistant Skills plugin contains only SKILL.md files (documentation). All CLI implementation is in the `jira-assistant-skills` package (source: `jira-assistant-skills-lib/` submodule).
+- **Package renamed**: The package is now `jira-assistant-skills` (not `jira-assistant-skills-lib`). Install with `pip install jira-assistant-skills`. The Python module name is still `jira_assistant_skills_lib`.
+- **Mock mode requires get_jira_client() check**: The `is_mock_mode()` check must be in the `get_jira_client()` convenience function (config_manager.py), not just ConfigManager methods. Skills call the convenience function via `from jira_assistant_skills_lib import get_jira_client`.
 - **Telemetry reveals tool call cascades**: Loki `prompt_complete` events include `tools_called` array (e.g., `["Skill", "Bash", "Skill", "Bash"]`). Use this to diagnose unexpected tool usage patterns like credential check cascades.
 - **Compare interactive vs mock tests**: When mock tests fail but interactive tests pass with the same prompt, check if the container has the latest library code. Stale container = mock client not activating = credential validation fails = Bash diagnostic cascade.
 - **Mock client API parity**: Mock client methods must match real `JiraClient` signatures exactly. Common miss: `search_issues()` needs `next_page_token` parameter. Error pattern: `TypeError: MockJiraClientBase.search_issues() got an unexpected keyword argument 'next_page_token'`. Fix in `mock/base.py`, not config_manager.
-- **Test scripts directly first**: Before running full `make test-skill-mock-dev`, test the skill script directly to get clearer errors. See "Mock Mode Debugging" section below.
+- **Test CLI directly first**: Before running full `make test-skill-mock-dev`, test `jira-as` CLI commands directly to get clearer errors. See "Mock Mode Debugging" section below.
 - **Mock activation vs mock errors**: Different failure patterns: (1) Mock not activating = credential validation errors + Bash cascade. (2) Mock activated but incomplete = `TypeError` on mock methods. Verify activation first with quick Python test.
-- **jira-as CLI from wheel, not editable install**: The `jira-as` CLI is defined in root `pyproject.toml` of `jira-assistant-skills` repo. Editable installs (`pip install -e`) fail due to broken venv symlinks in skill directories. Solution: install from pre-built wheel via `pip install /opt/jira-dist/*.whl`. Makefile targets mount `dist/` directory for this.
-- **Rebuild wheel after package changes**: Changes to `jira-assistant-skills` package (CLI, skills) require rebuilding the wheel (`hatch build` or `python -m build`) before container will see them. The wheel is NOT auto-rebuilt.
+- **jira-as CLI from wheel**: The `jira-as` CLI is in the `jira-assistant-skills` package (source: `jira-assistant-skills-lib/`). Install from wheel via `pip install /opt/jira-dist/*.whl`. Makefile targets mount the `dist/` directory for this.
+- **Rebuild wheel after package changes**: Changes to `jira-assistant-skills` package require rebuilding the wheel (`hatch build` in `jira-assistant-skills-lib/`) before container will see them.
 - **Skill cascade on failure**: When Claude calls a Skill and the subsequent Bash command fails (e.g., `jira-as` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic. Note: `Skill → Bash` is the CORRECT pattern (see below); only failure cascades are problematic.
 - **skill-test.py baked into container**: The `skill-test.py` is copied into the container image at build time. Changes to `demo-container/skill-test.py` require either `make build` OR mounting the local file. Makefile dev targets now mount it automatically: `-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro`.
 - **Judge needs skill execution context**: The LLM judge evaluates tool usage. Without context about how Claude Code skills work (`Skill → Bash` pattern), it will incorrectly penalize Bash usage as "extra tools". The judge prompt in `skill-test.py` includes this context - don't remove it.
@@ -352,17 +351,14 @@ docker run --rm \
 # If "jira-as not found": wheel may be missing or outdated - run `hatch build` in jira-assistant-skills repo
 ```
 
-**Step 2: Test skill script directly**
+**Step 2: Test CLI commands directly**
 ```bash
 docker run --rm -e JIRA_MOCK_MODE=true \
-    -v $JIRA_PLUGIN_PATH:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro \
     -v $JIRA_LIB_PATH:/opt/jira-lib:ro \
+    -v $JIRA_DIST_PATH:/opt/jira-dist:ro \
     --entrypoint bash jira-demo-container:latest \
-    -c "pip install -q -e /opt/jira-lib && \
-        rm -rf ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 && \
-        ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 && \
-        cd ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev/skills/jira-search/scripts && \
-        python3 jql_search.py 'project=DEMO'"
+    -c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl && \
+        jira-as search query 'project=DEMO'"
 # Expected: Table of DEMO-84, DEMO-85, etc.
 ```
 
@@ -395,8 +391,7 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 | Tools: `['Skill', 'Bash', 'Bash', ...]` | Multiple CLI calls | May be correct if multiple operations needed |
 | Tools: `['Skill', 'Bash', 'Skill', ...]` | Re-loading skill | Possible issue; skill should only load once per conversation |
 | `jira-as: command not found` | CLI not installed | Install from wheel: `pip install /opt/jira-dist/*.whl` |
-| Skill → setup → Bash exploration | CLI command failed | Check `which jira-as`; rebuild wheel if outdated |
-| `FileNotFoundError: .../venv/bin/python` | Editable install fails | Use wheel install instead of `-e` for root package |
+| Skill → setup → Bash exploration | CLI command failed | Check `which jira-as`; rebuild wheel with `hatch build` in `jira-assistant-skills-lib/` |
 | "Tool accuracy: partial" with `['Skill', 'Bash']` | **FALSE NEGATIVE** | Test expectations wrong; `Skill → Bash` is correct |
 
 ## Level 2 Reference

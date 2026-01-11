@@ -16,8 +16,8 @@ try:
     from jira_assistant_skills_lib import get_jira_client, print_error, print_success  # type: ignore[import-untyped]
     from jira_assistant_skills_lib.error_handler import JiraError  # type: ignore[import-untyped]
 except ImportError:
-    print("Error: jira-assistant-skills-lib not installed")
-    print("Run: pip install jira-assistant-skills-lib")
+    print("Error: jira-assistant-skills not installed")
+    print("Run: pip install jira-assistant-skills")
     sys.exit(1)
 
 # Re-export for convenience
