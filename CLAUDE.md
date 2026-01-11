@@ -77,6 +77,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Container mount path changes**: After renaming mounted files (e.g., `locations.conf` → `locations.include`), you must recreate the container (`docker rm -f` + `docker-compose up -d`), not just restart it. Docker caches mount paths.
 - **Production env vars location**: On production (`/opt/jira-demo`), env vars must be in `.env` (project root), not `secrets/.env`. Docker-compose only reads `.env` from the project root. The `secrets/.env` is only loaded when using Makefile targets (via `include ./secrets/.env`).
 - **Production SSH access**: Production is at `ssh root@assistant-skills.dev` with code in `/opt/jira-demo`. Use `make` commands via SSH: `ssh root@assistant-skills.dev "cd /opt/jira-demo && make invite"`.
+- **Skill test working directory**: Skill tests must run from `/tmp` (neutral directory), not `/workspace`. When Claude sees plugin structure in working directory, it routes to setup prompts instead of executing skills. The Makefile adds `cd /tmp &&` before running tests.
+- **Consolidated wheel path**: Use wheels from `jira-assistant-skills-lib/dist/` (consolidated package with CLI), not `dist/` (stale wheels that require `jira-assistant-skills-lib` from PyPI). The stale wheels cause mock mode failures because PyPI version lacks latest fixes.
 
 ## How Claude Code Skills Work
 
