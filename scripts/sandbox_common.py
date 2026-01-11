@@ -37,6 +37,9 @@ __all__ = [
     "SEED_LABEL",
     # Helpers
     "dry_run_prefix",
+    "build_adf_description",
+    "build_jql",
+    "for_each_issue",
 ]
 
 # =============================================================================
@@ -65,3 +68,87 @@ SEED_LABEL = "demo"
 def dry_run_prefix(dry_run: bool) -> str:
     """Return prefix string for dry-run mode messages."""
     return "[DRY RUN] " if dry_run else ""
+
+
+def build_adf_description(text: str) -> dict:
+    """Build Atlassian Document Format description for JIRA API.
+
+    Args:
+        text: Plain text description content
+
+    Returns:
+        ADF-formatted description dict
+    """
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [{"type": "text", "text": text}],
+            }
+        ],
+    }
+
+
+def build_jql(
+    project_key: str | None = None,
+    is_seed: bool | None = None,
+    order_by: str = "key ASC",
+) -> str:
+    """Build JQL query for sandbox operations.
+
+    Args:
+        project_key: Filter by project (e.g., "DEMO")
+        is_seed: True for seed issues only, False for non-seed only, None for all
+        order_by: ORDER BY clause (default: "key ASC")
+
+    Returns:
+        JQL query string
+    """
+    parts = []
+    if project_key:
+        parts.append(f"project = {project_key}")
+    if is_seed is True:
+        parts.append(f"labels = {SEED_LABEL}")
+    elif is_seed is False:
+        parts.append(f"labels != {SEED_LABEL}")
+
+    jql = " AND ".join(parts) if parts else ""
+    if jql:
+        jql += f" ORDER BY {order_by}"
+    return jql
+
+
+def for_each_issue(
+    client: Any,
+    jql: str,
+    operation: callable,
+    dry_run: bool = False,
+    fields: list[str] | None = None,
+) -> int:
+    """Iterate over issues matching JQL and apply operation.
+
+    Args:
+        client: JIRA client instance
+        jql: JQL query to find issues
+        operation: Function(client, issue, dry_run) -> bool (True if processed)
+        dry_run: If True, operation should only print what it would do
+        fields: Fields to fetch (default: ["key"])
+
+    Returns:
+        Count of processed items
+    """
+    if fields is None:
+        fields = ["key"]
+
+    count = 0
+    try:
+        result = client.search_issues(jql, fields=fields, max_results=100)
+        for issue in result.get("issues", []):
+            if operation(client, issue, dry_run):
+                count += 1
+    except JiraError as e:
+        print(f"  Error searching issues: {e}")
+
+    return count
