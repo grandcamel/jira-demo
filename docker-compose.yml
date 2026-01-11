@@ -10,7 +10,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/demo.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/locations.conf:/etc/nginx/conf.d/locations.conf:ro
+      - ./nginx/locations.include:/etc/nginx/conf.d/locations.include:ro
       - ./landing-page:/var/www/html:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - nginx-logs:/var/log/nginx
