@@ -6,15 +6,15 @@ and cleanup_demo_sandbox.py.
 """
 
 import sys
-from typing import Any
+from typing import Any, Callable
 
 # =============================================================================
 # JIRA Library Imports (with fallback)
 # =============================================================================
 
 try:
-    from jira_assistant_skills_lib import get_jira_client, print_error, print_success
-    from jira_assistant_skills_lib.error_handler import JiraError
+    from jira_assistant_skills_lib import get_jira_client, print_error, print_success  # type: ignore[import-untyped]
+    from jira_assistant_skills_lib.error_handler import JiraError  # type: ignore[import-untyped]
 except ImportError:
     print("Error: jira-assistant-skills-lib not installed")
     print("Run: pip install jira-assistant-skills-lib")
@@ -123,7 +123,7 @@ def build_jql(
 def for_each_issue(
     client: Any,
     jql: str,
-    operation: callable,
+    operation: Callable[[Any, Any, bool], bool],
     dry_run: bool = False,
     fields: list[str] | None = None,
 ) -> int:

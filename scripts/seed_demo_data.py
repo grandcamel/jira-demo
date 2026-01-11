@@ -11,7 +11,7 @@ Usage:
 """
 
 import argparse
-from typing import Any
+from typing import Any, cast
 
 from sandbox_common import (
     DEMO_PROJECT,
@@ -36,7 +36,7 @@ from sandbox_common import (
 JANE_MANAGER_DISPLAY_NAME = "Jane Manager"
 
 # Seed issues for DEMO project
-DEMO_ISSUES = [
+DEMO_ISSUES: list[dict[str, Any]] = [
     {
         "summary": "Product Launch",
         "description": "Epic for Q1 product launch including all related stories and tasks.",
@@ -121,7 +121,7 @@ DEMO_ISSUES = [
 # Seed requests for DEMOSD service desk
 # Request types available: Computer support, Employee exit, IT help, New employee,
 #                          Purchase over $100, Purchase under $100, Travel request, Emailed request
-DEMOSD_REQUESTS = [
+DEMOSD_REQUESTS: list[dict[str, Any]] = [
     {
         "summary": "Can't connect to VPN",
         "description": "I'm working from home and can't connect to the corporate VPN. Getting 'connection timeout' error.",

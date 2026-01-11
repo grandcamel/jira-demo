@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import requests
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 # =============================================================================
 # Telemetry Setup
@@ -333,7 +333,7 @@ def parse_prompts_file(filepath: Path) -> list[PromptSpec]:
     # Split by --- delimiter (YAML document separator)
     documents = content.split("\n---\n")
 
-    specs = []
+    specs: list[PromptSpec] = []
     for i, doc in enumerate(documents):
         doc = doc.strip()
         if not doc or doc == "---":
@@ -396,7 +396,7 @@ def run_claude_prompt(
     verbose: bool = False,
     prompt_index: int = 0,
     continue_conversation: bool = False,
-    resume_session_id: str = None,
+    resume_session_id: str | None = None,
     fork_session: bool = False,
 ) -> tuple[str, list[ToolCall], int, float, str]:
     """
@@ -1070,11 +1070,11 @@ def generate_json_report(results: list[PromptResult], scenario_name: str) -> dic
     }
 
 
-def generate_fix_context(result: PromptResult, skills_path: str) -> dict:
+def generate_fix_context(result: PromptResult, skills_path: str) -> dict[str, Any]:
     """Generate fix context for the skill-fix agent."""
     import subprocess
 
-    context = {
+    context: dict[str, Any] = {
         "failure": {
             "prompt_index": result.spec.index,
             "prompt_text": result.spec.prompt,

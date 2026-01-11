@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 MOCK_STATE_FILE = Path(os.environ.get("MOCK_STATE_FILE", "/tmp/mock_state.json"))
 
@@ -27,7 +28,7 @@ def _save_issues_state(issues: dict, next_id: int) -> None:
     if os.environ.get("JIRA_MOCK_MODE", "").lower() != "true":
         return
 
-    state = {
+    state: dict[str, Any] = {
         "next_issue_id": next_id,
         "issues": {},
     }
@@ -125,4 +126,4 @@ class MockPersistenceImportHook:
 
 
 # Install the import hook
-sys.meta_path.insert(0, MockPersistenceImportHook())
+sys.meta_path.insert(0, MockPersistenceImportHook())  # type: ignore[arg-type]
