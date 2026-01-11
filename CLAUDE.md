@@ -71,6 +71,10 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Mock client state now persists**: File-based persistence (`/tmp/mock_state.json`) enables created issues to persist across CLI calls within the same container run. Implemented via `sitecustomize.py` import hook in `/workspace/patches/`. State resets per scenario (new container run = fresh state).
 - **Mock client parameter warnings**: The mock client may log warnings for unsupported parameters (e.g., `notify_users`). Relax `must_not_contain: [error]` expectations to `must_not_contain: [failed]` for prompts that may trigger these warnings.
 - **Test result variability**: Expect 10-20% variation in pass rates between identical test runs. Claude's non-deterministic responses and conversation context handling cause variability. Run tests multiple times to assess true pass rate.
+- **Nginx locations.include naming**: The `locations.include` file contains `location` directives that must be inside a `server` block. It's named `.include` (not `.conf`) to prevent nginx from auto-including it via the `*.conf` pattern at the http context level.
+- **Local vs production deploy**: `make deploy` requires SSL certificates at `/etc/letsencrypt/` that only exist on the production server. For local development, always use `make dev` which uses `docker-compose.dev.yml` with HTTP-only nginx config on port 8080.
+- **Docker compose timeout recovery**: If `docker-compose down` times out (common with nginx), force remove the stuck container with `docker rm -f jira-demo-nginx`, then restart with `docker-compose up -d`.
+- **Container mount path changes**: After renaming mounted files (e.g., `locations.conf` → `locations.include`), you must recreate the container (`docker rm -f` + `docker-compose up -d`), not just restart it. Docker caches mount paths.
 
 ## How Claude Code Skills Work
 
