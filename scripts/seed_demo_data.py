@@ -11,26 +11,25 @@ Usage:
 """
 
 import argparse
-import sys
 from typing import Any
 
-try:
-    from jira_assistant_skills_lib import get_jira_client, print_error, print_success
-    from jira_assistant_skills_lib.error_handler import JiraError
-except ImportError:
-    print("Error: jira-assistant-skills-lib not installed")
-    print("Run: pip install jira-assistant-skills-lib")
-    sys.exit(1)
-
-from otel_setup import init_telemetry, traced, add_span_attribute
+from sandbox_common import (
+    DEMO_PROJECT,
+    DEMO_SERVICE_DESK,
+    JiraError,
+    add_span_attribute,
+    dry_run_prefix,
+    get_jira_client,
+    init_telemetry,
+    print_error,
+    print_success,
+    traced,
+)
 
 
 # =============================================================================
 # Seed Data Configuration
 # =============================================================================
-
-DEMO_PROJECT = "DEMO"
-DEMO_SERVICE_DESK = "DEMOSD"
 
 # Test user for demo scenarios (display name used for lookups)
 JANE_MANAGER_DISPLAY_NAME = "Jane Manager"
@@ -174,7 +173,7 @@ def create_demo_issues(client: Any, dry_run: bool = False, jane_account_id: str 
     add_span_attribute("project.key", DEMO_PROJECT)
     add_span_attribute("dry_run", dry_run)
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating issues in {DEMO_PROJECT}...")
+    print(f"\n{dry_run_prefix(dry_run)}Creating issues in {DEMO_PROJECT}...")
 
     for i, issue_data in enumerate(DEMO_ISSUES, 1):
         summary = issue_data["summary"]
@@ -271,7 +270,7 @@ def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
     add_span_attribute("project.key", DEMO_SERVICE_DESK)
     add_span_attribute("dry_run", dry_run)
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Creating requests in {DEMO_SERVICE_DESK}...")
+    print(f"\n{dry_run_prefix(dry_run)}Creating requests in {DEMO_SERVICE_DESK}...")
 
     # Get service desk ID
     service_desk_id = None

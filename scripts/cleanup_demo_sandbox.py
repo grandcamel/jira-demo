@@ -12,29 +12,26 @@ Usage:
 """
 
 import argparse
-import sys
 from typing import Any
 
-try:
-    from jira_assistant_skills_lib import get_jira_client, print_error, print_success
-    from jira_assistant_skills_lib.error_handler import JiraError
-except ImportError:
-    print("Error: jira-assistant-skills-lib not installed")
-    print("Run: pip install jira-assistant-skills-lib")
-    sys.exit(1)
-
-from otel_setup import init_telemetry, traced, add_span_attribute
+from sandbox_common import (
+    DEMO_PROJECT,
+    DEMO_SERVICE_DESK,
+    SEED_LABEL,
+    JiraError,
+    add_span_attribute,
+    dry_run_prefix,
+    get_jira_client,
+    init_telemetry,
+    print_error,
+    print_success,
+    traced,
+)
 
 
 # =============================================================================
 # Configuration
 # =============================================================================
-
-DEMO_PROJECT = "DEMO"
-DEMO_SERVICE_DESK = "DEMOSD"
-
-# Label used to identify seed issues (created by seed_demo_data.py)
-SEED_LABEL = "demo"
 
 # Default status to reset seed issues to
 DEFAULT_STATUS = "Open"
@@ -47,7 +44,7 @@ def delete_user_created_issues(client: Any, project_key: str, dry_run: bool = Fa
     add_span_attribute("project.key", project_key)
     add_span_attribute("dry_run", dry_run)
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning up user-created issues in {project_key}...")
+    print(f"\n{dry_run_prefix(dry_run)}Cleaning up user-created issues in {project_key}...")
 
     # Search for issues without the seed label
     jql = f"project = {project_key} AND labels != {SEED_LABEL} ORDER BY created DESC"
@@ -87,7 +84,7 @@ def reset_seed_issues(client: Any, dry_run: bool = False) -> int:
     reset_count = 0
     add_span_attribute("dry_run", dry_run)
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Resetting seed issues...")
+    print(f"\n{dry_run_prefix(dry_run)}Resetting seed issues...")
 
     # Find all seed issues by label
     jql = f"labels = {SEED_LABEL} ORDER BY key ASC"
@@ -162,7 +159,7 @@ def delete_comments(client: Any, project_key: str, dry_run: bool = False) -> int
     add_span_attribute("project.key", project_key)
     add_span_attribute("dry_run", dry_run)
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning up comments in {project_key}...")
+    print(f"\n{dry_run_prefix(dry_run)}Cleaning up comments in {project_key}...")
 
     # Find seed issues by label
     jql = f"project = {project_key} AND labels = {SEED_LABEL} ORDER BY key ASC"
@@ -217,7 +214,7 @@ def delete_worklogs(client: Any, project_key: str, dry_run: bool = False) -> int
     add_span_attribute("project.key", project_key)
     add_span_attribute("dry_run", dry_run)
 
-    print(f"\n{'[DRY RUN] ' if dry_run else ''}Cleaning up worklogs in {project_key}...")
+    print(f"\n{dry_run_prefix(dry_run)}Cleaning up worklogs in {project_key}...")
 
     # Find seed issues by label
     jql = f"project = {project_key} AND labels = {SEED_LABEL} ORDER BY key ASC"
