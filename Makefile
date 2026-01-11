@@ -142,10 +142,10 @@ define skill_test_docker_run
 		$(2) \
 		--entrypoint bash \
 		jira-demo-container:latest \
-		-c "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; \
+		-c "pip install -q /opt/jira-dist/*.whl 2>/dev/null; \
 		    rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
 		    ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; \
-		    python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
+		    cd /tmp && python /workspace/skill-test.py /workspace/scenarios/$(SCENARIO).prompts \
 		    --model $(or $(MODEL),sonnet) \
 		    --judge-model $(or $(JUDGE_MODEL),haiku) \
 		    $(3) \
@@ -292,7 +292,8 @@ test-skill:
 JIRA_SKILLS_PATH ?= /Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills
 JIRA_PLUGIN_PATH = $(JIRA_SKILLS_PATH)/plugins/jira-assistant-skills
 JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib
-JIRA_DIST_PATH = $(JIRA_SKILLS_PATH)/dist
+# Use consolidated wheel from lib dist (contains both library and CLI)
+JIRA_DIST_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib/dist
 # Session persistence directories for fork feature
 CLAUDE_SESSIONS_DIR ?= /tmp/claude-sessions
 CHECKPOINTS_DIR ?= /tmp/checkpoints
