@@ -75,6 +75,8 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Local vs production deploy**: `make deploy` requires SSL certificates at `/etc/letsencrypt/` that only exist on the production server. For local development, always use `make dev` which uses `docker-compose.dev.yml` with HTTP-only nginx config on port 8080.
 - **Docker compose timeout recovery**: If `docker-compose down` times out (common with nginx), force remove the stuck container with `docker rm -f jira-demo-nginx`, then restart with `docker-compose up -d`.
 - **Container mount path changes**: After renaming mounted files (e.g., `locations.conf` → `locations.include`), you must recreate the container (`docker rm -f` + `docker-compose up -d`), not just restart it. Docker caches mount paths.
+- **Production env vars location**: On production (`/opt/jira-demo`), env vars must be in `.env` (project root), not `secrets/.env`. Docker-compose only reads `.env` from the project root. The `secrets/.env` is only loaded when using Makefile targets (via `include ./secrets/.env`).
+- **Production SSH access**: Production is at `ssh root@assistant-skills.dev` with code in `/opt/jira-demo`. Use `make` commands via SSH: `ssh root@assistant-skills.dev "cd /opt/jira-demo && make invite"`.
 
 ## How Claude Code Skills Work
 
