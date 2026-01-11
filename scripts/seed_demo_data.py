@@ -18,6 +18,7 @@ from sandbox_common import (
     DEMO_SERVICE_DESK,
     JiraError,
     add_span_attribute,
+    build_adf_description,
     dry_run_prefix,
     get_jira_client,
     init_telemetry,
@@ -188,16 +189,7 @@ def create_demo_issues(client: Any, dry_run: bool = False, jane_account_id: str 
             fields = {
                 "project": {"key": DEMO_PROJECT},
                 "summary": summary,
-                "description": {
-                    "type": "doc",
-                    "version": 1,
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [{"type": "text", "text": issue_data.get("description", "")}],
-                        }
-                    ],
-                },
+                "description": build_adf_description(issue_data.get("description", "")),
                 "issuetype": {"name": issue_data["issuetype"]},
                 "priority": {"name": issue_data.get("priority", "Medium")},
             }
@@ -320,16 +312,7 @@ def create_demo_requests(client: Any, dry_run: bool = False) -> list[str]:
             fields = {
                 "project": {"key": DEMO_SERVICE_DESK},
                 "summary": summary,
-                "description": {
-                    "type": "doc",
-                    "version": 1,
-                    "content": [
-                        {
-                            "type": "paragraph",
-                            "content": [{"type": "text", "text": request_data.get("description", "")}],
-                        }
-                    ],
-                },
+                "description": build_adf_description(request_data.get("description", "")),
                 "issuetype": {"name": "Service Request"},
             }
 

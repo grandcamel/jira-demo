@@ -17,9 +17,9 @@ from typing import Any
 from sandbox_common import (
     DEMO_PROJECT,
     DEMO_SERVICE_DESK,
-    SEED_LABEL,
     JiraError,
     add_span_attribute,
+    build_jql,
     dry_run_prefix,
     get_jira_client,
     init_telemetry,
@@ -47,7 +47,7 @@ def delete_user_created_issues(client: Any, project_key: str, dry_run: bool = Fa
     print(f"\n{dry_run_prefix(dry_run)}Cleaning up user-created issues in {project_key}...")
 
     # Search for issues without the seed label
-    jql = f"project = {project_key} AND labels != {SEED_LABEL} ORDER BY created DESC"
+    jql = build_jql(project_key=project_key, is_seed=False, order_by="created DESC")
 
     try:
         result = client.search_issues(jql, fields=["key", "summary"], max_results=100)
@@ -87,7 +87,7 @@ def reset_seed_issues(client: Any, dry_run: bool = False) -> int:
     print(f"\n{dry_run_prefix(dry_run)}Resetting seed issues...")
 
     # Find all seed issues by label
-    jql = f"labels = {SEED_LABEL} ORDER BY key ASC"
+    jql = build_jql(is_seed=True)
 
     try:
         result = client.search_issues(jql, fields=["key", "status", "assignee", "resolution"], max_results=100)
@@ -162,7 +162,7 @@ def delete_comments(client: Any, project_key: str, dry_run: bool = False) -> int
     print(f"\n{dry_run_prefix(dry_run)}Cleaning up comments in {project_key}...")
 
     # Find seed issues by label
-    jql = f"project = {project_key} AND labels = {SEED_LABEL} ORDER BY key ASC"
+    jql = build_jql(project_key=project_key, is_seed=True)
 
     try:
         result = client.search_issues(jql, fields=["key"], max_results=100)
@@ -217,7 +217,7 @@ def delete_worklogs(client: Any, project_key: str, dry_run: bool = False) -> int
     print(f"\n{dry_run_prefix(dry_run)}Cleaning up worklogs in {project_key}...")
 
     # Find seed issues by label
-    jql = f"project = {project_key} AND labels = {SEED_LABEL} ORDER BY key ASC"
+    jql = build_jql(project_key=project_key, is_seed=True)
 
     try:
         result = client.search_issues(jql, fields=["key"], max_results=100)
