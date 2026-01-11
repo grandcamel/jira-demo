@@ -11,7 +11,8 @@ Usage:
 """
 
 import argparse
-from typing import Any, cast
+import sys
+from typing import Any
 
 from sandbox_common import (
     DEMO_PROJECT,

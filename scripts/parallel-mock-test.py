@@ -288,9 +288,9 @@ def generate_plan_file(result: ScenarioResult, output_dir: Path) -> Path:
     # Test commands
     content.append("## Test Commands\n\n")
     content.append("```bash\n")
-    content.append(f"# Single scenario test\n")
+    content.append("# Single scenario test\n")
     content.append(f"make test-skill-mock-dev SCENARIO={result.scenario}\n\n")
-    content.append(f"# With conversation mode\n")
+    content.append("# With conversation mode\n")
     content.append(f"make test-skill-mock-dev SCENARIO={result.scenario} CONVERSATION=1 FAIL_FAST=1\n")
     content.append("```\n")
 
@@ -424,14 +424,14 @@ Examples:
 
     if missing:
         print(f"Error: Scenarios not found: {', '.join(missing)}")
-        print(f"Use --list-scenarios to see available scenarios")
+        print("Use --list-scenarios to see available scenarios")
         sys.exit(1)
 
     # Check plugin path
     plugin_path, lib_path, _ = get_plugin_paths()
     if not plugin_path.exists():
         print(f"Error: Plugin not found at {plugin_path}")
-        print(f"Set JIRA_SKILLS_PATH environment variable")
+        print("Set JIRA_SKILLS_PATH environment variable")
         sys.exit(1)
 
     # Ensure network exists

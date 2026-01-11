@@ -41,7 +41,6 @@ import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -1238,7 +1237,6 @@ def run_skill_test(
     results: list[PromptResult] = []
     captured_values: dict[str, str] = {}
     total_duration = 0.0
-    total_cost = 0.0
 
     # Load checkpoint for forking if specified
     resume_session_id = None
@@ -1402,7 +1400,7 @@ def run_skill_test(
 
                 # Stop on first failure if fail_fast is enabled
                 if fail_fast and not result.passed:
-                    print(f"  Stopping early (--fail-fast enabled)", file=out)
+                    print("  Stopping early (--fail-fast enabled)", file=out)
                     break
 
         # Calculate summary stats

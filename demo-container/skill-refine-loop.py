@@ -386,7 +386,7 @@ def run_refinement_loop(
             else:
                 # First prompt failed, no checkpoint to fork from
                 prompt_index = 0
-                print(f"First prompt failed, running from start")
+                print("First prompt failed, running from start")
 
         # Run test with fix context output
         all_passed, fix_ctx = run_skill_test(
