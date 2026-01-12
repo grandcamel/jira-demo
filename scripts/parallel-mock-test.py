@@ -93,7 +93,8 @@ def get_plugin_paths() -> tuple[Path, Path, Path]:
         plugin_path = skills_path / "jira-assistant-skills"
 
     lib_path = skills_path / "jira-assistant-skills-lib"
-    dist_path = skills_path / "dist"
+    # Use consolidated wheel from lib dist (contains both library and CLI)
+    dist_path = skills_path / "jira-assistant-skills-lib" / "dist"
 
     return plugin_path, lib_path, dist_path
 
@@ -138,29 +139,44 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
             error=f"Plugin not found at {plugin_path}",
         )
 
+    # Get Claude auth token from environment
+    claude_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
+    if not claude_token:
+        # Try to get from macOS keychain
+        try:
+            result = subprocess.run(
+                ["security", "find-generic-password", "-a", os.environ.get("USER", ""),
+                 "-s", "CLAUDE_CODE_OAUTH_TOKEN", "-w"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                claude_token = result.stdout.strip()
+        except Exception:
+            pass
+
     # Build docker command (matching test-skill-mock-dev pattern)
     cmd = [
         "docker", "run", "--rm",
         "--network", DEMO_NETWORK,
         "-e", "JIRA_MOCK_MODE=true",
+        "-e", "PYTHONPATH=/workspace/patches",
         "-e", "OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318",
         "-e", "LOKI_ENDPOINT=http://lgtm:3100",
-        "-v", f"{SECRETS_DIR}/.credentials.json:/home/devuser/.claude/.credentials.json:ro",
-        "-v", f"{SECRETS_DIR}/.claude.json:/home/devuser/.claude/.claude.json:ro",
+        "-e", f"CLAUDE_CODE_OAUTH_TOKEN={claude_token}",
         "-v", f"{plugin_path}:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro",
-        "-v", f"{lib_path}:/opt/jira-lib:ro",
         "-v", f"{dist_path}:/opt/jira-dist:ro",
+        "-v", f"{PROJECT_ROOT}/demo-container/patches:/workspace/patches:ro",
         "--entrypoint", "bash",
         "jira-demo-container:latest",
         "-c",
     ]
 
-    # Inner command: install lib + wheel (for jira-as CLI), symlink plugin, run test with fix-context
+    # Inner command: install wheel (for jira-as CLI), symlink plugin, run test from /tmp with fix-context
     inner_cmd = (
-        "pip install -q -e /opt/jira-lib /opt/jira-dist/*.whl 2>/dev/null; "
+        "pip install -q /opt/jira-dist/*.whl 2>/dev/null; "
         "rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
         "ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
-        f"python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "
+        f"cd /tmp && python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "
         f"--mock --fix-context {JIRA_SKILLS_PATH}"
     )
 
