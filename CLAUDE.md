@@ -134,6 +134,8 @@ nginx --> queue-manager --> ttyd --> demo-container
 | Parallel mock tests | `make test-all-mocks` |
 | Parallel (specific) | `make test-all-mocks SCENARIOS=search,issue` |
 | Refine skills | `make refine-skill SCENARIO=search` |
+| Parallel refine | `make refine-all-mocks` |
+| Parallel refine (specific) | `make refine-all-mocks SCENARIOS=search,issue MAX_ATTEMPTS=5` |
 | Shell access | `make shell-queue` / `make shell-demo` |
 | Run prompt non-interactively | `make shell-demo PROMPT="..." MODEL=opus` |
 | Verify mock activation | See "Mock Mode Debugging" section |
@@ -276,6 +278,37 @@ make test-all-mocks MAX_WORKERS=6 VERBOSE=1
 - 20-minute timeout per scenario
 - Exit code 0 if all pass, 1 if any fail
 - Use `--fix-context` flag to output JSON for debugging failures
+
+## Parallel Skill Refinement
+
+Run refinement loops for all scenarios in parallel. Each scenario gets independent retry attempts with checkpoint-based iteration and fix agent session continuity:
+
+```bash
+# Run all 11 scenarios with 5 retries each (default)
+make refine-all-mocks
+
+# Run specific scenarios
+make refine-all-mocks SCENARIOS=search,issue,agile
+
+# Custom parallelism and retries
+make refine-all-mocks MAX_WORKERS=6 MAX_ATTEMPTS=3 VERBOSE=1
+```
+
+**Key details:**
+- Uses `scripts/parallel-refine-loop.py` orchestrator
+- Each scenario runs independently in parallel (default: 4 workers)
+- 5 retry attempts per scenario (configurable via `MAX_ATTEMPTS`)
+- Checkpoint-based iteration: skips passed prompts on retry
+- Fix agent maintains session continuity across attempts
+- Generates `REFINE-SUMMARY.md` report with results
+- Exit code 0 if all scenarios pass, 1 if any fail
+
+**Flow per scenario:**
+```
+Attempt 1: Run all prompts → Fail at prompt N → Checkpoint at N-1 → Fix agent
+Attempt 2: Fork from N-1 → Run prompt N → Still fails → Fix agent (same session)
+Attempt 3: Fork from N-1 → Pass → Success!
+```
 
 ## Skill Test Iteration Workflow
 

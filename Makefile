@@ -1,6 +1,6 @@
 .PHONY: dev dev-down build deploy logs logs-queue logs-nginx health reset-sandbox seed-sandbox clean otel-logs otel-reset \
 	invite invite-list invite-info invite-revoke ssl-setup ssl-renew shell-queue shell-demo \
-	test-landing test-terminal run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks \
+	test-landing test-terminal run-scenario test-skill test-skill-dev test-skill-mock test-skill-mock-dev refine-skill test-all-mocks refine-all-mocks \
 	status-local health-local start-local stop-local restart-local queue-status-local queue-reset-local invite-local \
 	logs-errors-local traces-errors-local help
 
@@ -361,6 +361,22 @@ test-all-mocks:
 		--output-dir $(PWD) \
 		$(if $(VERBOSE),--verbose,)
 
+# Run parallel refinement loops for all scenarios (test + fix + retry)
+# Each scenario gets independent retry attempts with checkpoint-based iteration
+# Usage: make refine-all-mocks
+#        make refine-all-mocks SCENARIOS="search,issue"
+#        make refine-all-mocks MAX_WORKERS=4 MAX_ATTEMPTS=5
+refine-all-mocks:
+	@if [ ! -d "$(JIRA_PLUGIN_PATH)" ]; then echo "Error: Plugin not found at $(JIRA_PLUGIN_PATH)"; exit 1; fi
+	@docker network create $(DEMO_NETWORK) 2>/dev/null || true
+	@mkdir -p /tmp/checkpoints
+	python scripts/parallel-refine-loop.py \
+		--scenarios $(or $(SCENARIOS),all) \
+		--max-workers $(or $(MAX_WORKERS),4) \
+		--max-attempts $(or $(MAX_ATTEMPTS),5) \
+		--output-dir $(PWD) \
+		$(if $(VERBOSE),--verbose,)
+
 # Help
 help:
 	@echo "JIRA Demo Management Commands"
@@ -408,6 +424,8 @@ help:
 	@echo "  make refine-skill SCENARIO=search     - Iterative test+fix loop"
 	@echo "  make test-all-mocks                   - Run all mock tests in parallel"
 	@echo "  make test-all-mocks SCENARIOS=search,issue - Run specific scenarios"
+	@echo "  make refine-all-mocks                 - Parallel refine loops (5 retries each)"
+	@echo "  make refine-all-mocks SCENARIOS=search,issue MAX_ATTEMPTS=5"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          - Remove all containers and volumes"
