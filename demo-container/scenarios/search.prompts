@@ -1,12 +1,13 @@
 # Search Scenario - Tests jira-search skill
 # Enhanced format with expectations for skill testing
+# NOTE: In conversation mode, first prompt loads Skill, subsequent use Bash only
 ---
 prompt: |
   Show me all open issues in DEMO
 expect:
   tools:
     must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    # First prompt loads skill context
   text:
     must_contain: [DEMO-]
     must_not_contain: [error, "I don't have access", "I couldn't find"]
@@ -18,8 +19,8 @@ prompt: |
   Find all bugs in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
+    # Subsequent prompts use Bash only (skill context already loaded)
   text:
     must_contain: [DEMO-, Bug]
     must_not_contain: [error, failed]
@@ -31,8 +32,7 @@ prompt: |
   Show me all stories in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-, Story]
     must_not_contain: [error, failed]
@@ -43,8 +43,7 @@ prompt: |
   What are the high priority issues in DEMO?
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-, High]
     must_not_contain: [error, failed]
@@ -55,8 +54,7 @@ prompt: |
   Show me issues that are In Progress in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-]
     must_not_contain: [error, failed]
@@ -68,8 +66,7 @@ prompt: |
   What issues are assigned to me in DEMO?
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-]
     must_not_contain: [error, "I don't have access"]
@@ -81,8 +78,7 @@ prompt: |
   Show me issues assigned to Jane Manager in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-86, DEMO-87, Jane Manager]
     must_not_contain: [error, "couldn't find user"]
@@ -94,8 +90,7 @@ prompt: |
   Find issues reported by Jane in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-91]
     must_not_contain: [error, failed]
@@ -107,8 +102,7 @@ prompt: |
   Find high priority bugs that are still open in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-86, High, Bug]
     must_not_contain: [error, failed]
@@ -120,8 +114,7 @@ prompt: |
   Search for issues mentioning 'login' in DEMO
 expect:
   tools:
-    must_call: [Skill]
-    # must_not_call: [Bash]  # Relaxed - Claude may explore
+    must_call: [Bash]
   text:
     must_contain: [DEMO-86, login]
     must_not_contain: [error, failed]
