@@ -33,6 +33,7 @@ Fast Iteration with Checkpoints:
 """
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -124,8 +125,35 @@ def trace_span(
 
 
 # =============================================================================
-# Session Checkpoints
+# Session Checkpoints (with file locking for parallel safety)
 # =============================================================================
+
+
+@contextmanager
+def _checkpoint_lock(checkpoint_file: Path, exclusive: bool = False):
+    """
+    Context manager for checkpoint file locking.
+
+    Uses fcntl.flock for Unix file locking to prevent race conditions
+    when multiple parallel processes access the same checkpoint file.
+
+    Args:
+        checkpoint_file: Path to the checkpoint file
+        exclusive: If True, acquire exclusive (write) lock; otherwise shared (read) lock
+    """
+    # Ensure parent directory exists
+    checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create lock file (separate from data file to avoid truncation issues)
+    lock_file = checkpoint_file.with_suffix(".lock")
+    lock_fd = open(lock_file, "w")
+    try:
+        lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        fcntl.flock(lock_fd.fileno(), lock_type)
+        yield
+    finally:
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+        lock_fd.close()
 
 
 def _load_checkpoints_file(checkpoint_file: Path) -> dict:
@@ -139,21 +167,24 @@ def _load_checkpoints_file(checkpoint_file: Path) -> dict:
 
 
 def save_checkpoint(checkpoint_file: Path, prompt_index: int, session_id: str) -> None:
-    """Save a session checkpoint after a prompt completes."""
-    checkpoints = _load_checkpoints_file(checkpoint_file)
-    checkpoints[str(prompt_index)] = session_id
-    checkpoint_file.write_text(json.dumps(checkpoints, indent=2))
+    """Save a session checkpoint after a prompt completes (with exclusive lock)."""
+    with _checkpoint_lock(checkpoint_file, exclusive=True):
+        checkpoints = _load_checkpoints_file(checkpoint_file)
+        checkpoints[str(prompt_index)] = session_id
+        checkpoint_file.write_text(json.dumps(checkpoints, indent=2))
 
 
-def load_checkpoint(checkpoint_file: Path, prompt_index: int) -> str | None:
-    """Load a session checkpoint for a specific prompt index."""
-    return _load_checkpoints_file(checkpoint_file).get(str(prompt_index))
+def load_checkpoint(checkpoint_file: Path, prompt_index: int) -> Optional[str]:
+    """Load a session checkpoint for a specific prompt index (with shared lock)."""
+    with _checkpoint_lock(checkpoint_file, exclusive=False):
+        return _load_checkpoints_file(checkpoint_file).get(str(prompt_index))
 
 
 def list_checkpoints(checkpoint_file: Path) -> dict[int, str]:
-    """List all available checkpoints."""
-    checkpoints = _load_checkpoints_file(checkpoint_file)
-    return {int(k): v for k, v in checkpoints.items()}
+    """List all available checkpoints (with shared lock)."""
+    with _checkpoint_lock(checkpoint_file, exclusive=False):
+        checkpoints = _load_checkpoints_file(checkpoint_file)
+        return {int(k): v for k, v in checkpoints.items()}
 
 
 # =============================================================================
