@@ -15,7 +15,8 @@ Usage:
     subprocess.run(cmd + [inner_cmd], ...)
 """
 
-import stat
+import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -31,9 +32,6 @@ from parallel_test_common import (
     get_claude_token,
     get_plugin_paths,
 )
-
-# Secure env file for Docker (avoids token exposure in ps output)
-_ENV_FILE_PATH = Path("/tmp/docker_skill_test.env")
 
 
 @dataclass
@@ -77,8 +75,9 @@ def _write_secure_env_file(token: str) -> Path:
     """
     Write OAuth token to a secure env file for Docker.
 
-    Uses a fixed path with restricted permissions (0600) to prevent
-    token exposure in `ps` output. The file is overwritten on each call.
+    Creates a unique temp file with restricted permissions (0600) to prevent
+    token exposure in `ps` output. Each call creates a new unique file,
+    making it safe for parallel execution and multi-user systems.
 
     Args:
         token: The OAuth token to write
@@ -86,18 +85,18 @@ def _write_secure_env_file(token: str) -> Path:
     Returns:
         Path to the env file
     """
-    # Write with restricted permissions to prevent other users from reading
     env_content = f"CLAUDE_CODE_OAUTH_TOKEN={token}\n"
 
-    # Remove existing file first (to reset permissions if needed)
-    if _ENV_FILE_PATH.exists():
-        _ENV_FILE_PATH.unlink()
+    # Create unique temp file with secure permissions
+    # mkstemp creates file with 0600 permissions by default
+    fd, path = tempfile.mkstemp(prefix="docker_env_", suffix=".env")
+    try:
+        # Write token to file
+        os.write(fd, env_content.encode())
+    finally:
+        os.close(fd)
 
-    # Create with restricted permissions (owner read/write only)
-    _ENV_FILE_PATH.touch(mode=stat.S_IRUSR | stat.S_IWUSR)
-    _ENV_FILE_PATH.write_text(env_content)
-
-    return _ENV_FILE_PATH
+    return Path(path)
 
 
 def build_skill_test_command(config: SkillTestConfig) -> tuple[list[str], str]:
