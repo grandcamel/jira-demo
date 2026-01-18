@@ -141,19 +141,33 @@ def _checkpoint_lock(checkpoint_file: Path, exclusive: bool = False):
         checkpoint_file: Path to the checkpoint file
         exclusive: If True, acquire exclusive (write) lock; otherwise shared (read) lock
     """
-    # Ensure parent directory exists
-    checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
+    # Use a lock file in /tmp to avoid race condition with directory creation.
+    # The lock file name is based on a hash of the checkpoint path to ensure
+    # uniqueness while avoiding path characters that are invalid in filenames.
+    import hashlib
+    lock_name = hashlib.md5(str(checkpoint_file).encode()).hexdigest()[:16]
+    lock_file = Path(f"/tmp/checkpoint_{lock_name}.lock")
 
-    # Create lock file (separate from data file to avoid truncation issues)
-    lock_file = checkpoint_file.with_suffix(".lock")
-    lock_fd = open(lock_file, "w")
+    lock_fd = None
     try:
+        # Open lock file (this always succeeds since /tmp exists)
+        lock_fd = open(lock_file, "w")
+
+        # Acquire lock
         lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
         fcntl.flock(lock_fd.fileno(), lock_type)
+
+        # Now safe to create parent directory (we hold the lock)
+        checkpoint_file.parent.mkdir(parents=True, exist_ok=True)
+
         yield
     finally:
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
-        lock_fd.close()
+        if lock_fd is not None:
+            try:
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            except OSError:
+                pass  # Ignore unlock errors during cleanup
+            lock_fd.close()
 
 
 def _load_checkpoints_file(checkpoint_file: Path) -> dict:
