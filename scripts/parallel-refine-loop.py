@@ -511,8 +511,8 @@ def generate_summary_report(result: OrchestratorResult, output_path: Path) -> No
         "# Parallel Refinement Results\n\n",
         f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n",
         "## Summary\n\n",
-        f"| Metric | Value |\n",
-        f"|--------|-------|\n",
+        "| Metric | Value |\n",
+        "|--------|-------|\n",
         f"| Total Scenarios | {result.total} |\n",
         f"| Passed | {result.passed} |\n",
         f"| Failed | {result.failed} |\n",
@@ -666,7 +666,7 @@ Examples:
     print(f"\nReport: {report_path}")
 
     if result.failed > 0:
-        print(f"\nFailed scenarios:")
+        print("\nFailed scenarios:")
         for r in result.results:
             if not r.passed:
                 print(f"  - {r.scenario}")
