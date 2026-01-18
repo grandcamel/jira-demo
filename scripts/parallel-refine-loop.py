@@ -16,7 +16,6 @@ Environment:
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -27,22 +26,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-# Constants
-DEMO_NETWORK = os.environ.get("DEMO_NETWORK", "demo-telemetry-network")
-PROJECT_ROOT = Path(__file__).parent.parent
-SCENARIOS_DIR = PROJECT_ROOT / "demo-container" / "scenarios"
-
-# Default JIRA skills path
-JIRA_SKILLS_PATH = os.environ.get(
-    "JIRA_SKILLS_PATH",
-    "/Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills"
+from parallel_test_common import (
+    ALL_SCENARIOS,
+    DEMO_NETWORK,
+    JIRA_SKILLS_PATH,
+    PROJECT_ROOT,
+    SCENARIOS_DIR,
+    ensure_network_exists,
+    get_claude_token,
+    get_plugin_paths,
+    parse_scenario_arg,
+    parse_test_output,
+    validate_scenarios,
 )
-
-# All main scenarios
-ALL_SCENARIOS = [
-    "admin", "agile", "bulk", "collaborate", "dev",
-    "fields", "issue", "jsm", "relationships", "search", "time"
-]
 
 # Timeouts
 DEFAULT_TEST_TIMEOUT = 600  # 10 min per test attempt
@@ -80,73 +76,6 @@ class OrchestratorResult:
     duration_seconds: float
     max_attempts: int
     results: list[ScenarioResult] = field(default_factory=list)
-
-
-def ensure_network_exists() -> bool:
-    """Ensure the telemetry network exists."""
-    result = subprocess.run(
-        ["docker", "network", "inspect", DEMO_NETWORK],
-        capture_output=True
-    )
-    if result.returncode != 0:
-        print(f"Creating network: {DEMO_NETWORK}")
-        create = subprocess.run(
-            ["docker", "network", "create", DEMO_NETWORK],
-            capture_output=True
-        )
-        return create.returncode == 0
-    return True
-
-
-def get_plugin_paths() -> tuple[Path, Path, Path]:
-    """Get paths to JIRA plugin, library, and dist."""
-    skills_path = Path(JIRA_SKILLS_PATH)
-
-    plugin_path = skills_path / "plugins" / "jira-assistant-skills"
-    if not plugin_path.exists():
-        plugin_path = skills_path / "jira-assistant-skills"
-
-    lib_path = skills_path / "jira-assistant-skills-lib"
-    dist_path = skills_path / "jira-assistant-skills-lib" / "dist"
-
-    return plugin_path, lib_path, dist_path
-
-
-def get_claude_token() -> str:
-    """Get Claude auth token from environment or keychain."""
-    token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")
-    if not token:
-        try:
-            result = subprocess.run(
-                ["security", "find-generic-password", "-a", os.environ.get("USER", ""),
-                 "-s", "CLAUDE_CODE_OAUTH_TOKEN", "-w"],
-                capture_output=True, text=True
-            )
-            if result.returncode == 0:
-                token = result.stdout.strip()
-        except Exception:
-            pass
-    return token
-
-
-def _parse_test_output(stdout: str) -> Optional[dict]:
-    """Parse JSON fix context from test output."""
-    stdout = stdout.strip()
-
-    try:
-        return json.loads(stdout)
-    except json.JSONDecodeError:
-        pass
-
-    # Find JSON in output
-    brace_idx = stdout.find("{")
-    if brace_idx >= 0:
-        try:
-            return json.loads(stdout[brace_idx:])
-        except json.JSONDecodeError:
-            pass
-
-    return None
 
 
 def run_skill_test(
@@ -223,7 +152,7 @@ def run_skill_test(
     except Exception as e:
         return False, {"error": str(e)}
 
-    parsed = _parse_test_output(result.stdout)
+    parsed = parse_test_output(result.stdout)
 
     if parsed and parsed.get("status") == "all_passed":
         return True, None
@@ -620,14 +549,9 @@ Examples:
             print(f"  {s} ({exists})")
         sys.exit(0)
 
-    # Parse scenarios
-    if args.scenarios == "all":
-        scenarios = ALL_SCENARIOS
-    else:
-        scenarios = [s.strip() for s in args.scenarios.split(",")]
-
-    # Validate
-    missing = [s for s in scenarios if not (SCENARIOS_DIR / f"{s}.prompts").exists()]
+    # Parse and validate scenarios
+    scenarios = parse_scenario_arg(args.scenarios)
+    missing = validate_scenarios(scenarios)
     if missing:
         print(f"Error: Scenarios not found: {', '.join(missing)}")
         sys.exit(1)
