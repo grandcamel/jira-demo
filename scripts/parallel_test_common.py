@@ -28,6 +28,29 @@ ALL_SCENARIOS = [
     "fields", "issue", "jsm", "relationships", "search", "time"
 ]
 
+# Session and checkpoint paths - configurable via env vars (matching Makefile)
+CLAUDE_SESSIONS_DIR = Path(os.environ.get("CLAUDE_SESSIONS_DIR", "/tmp/claude-sessions"))
+CHECKPOINTS_DIR = Path(os.environ.get("CHECKPOINTS_DIR", "/tmp/checkpoints"))
+
+# Container-side paths (used in docker mounts)
+CONTAINER_CHECKPOINTS_DIR = "/tmp/checkpoints"
+CONTAINER_SESSIONS_DIR = "/home/devuser/.claude/projects"
+
+
+def get_checkpoint_file(scenario: str) -> str:
+    """Get the checkpoint file path for a scenario (container-side path)."""
+    return f"{CONTAINER_CHECKPOINTS_DIR}/{scenario}.json"
+
+
+def ensure_checkpoint_dir() -> None:
+    """Ensure the checkpoint directory exists on the host."""
+    CHECKPOINTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_sessions_dir() -> None:
+    """Ensure the sessions directory exists on the host."""
+    CLAUDE_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def ensure_network_exists() -> bool:
     """Ensure the telemetry network exists, create if needed."""
