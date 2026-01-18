@@ -26,16 +26,15 @@ from typing import Optional
 from parallel_test_common import (
     ALL_SCENARIOS,
     DEMO_NETWORK,
-    JIRA_SKILLS_PATH,
     PROJECT_ROOT,
     SCENARIOS_DIR,
     ensure_network_exists,
-    get_claude_token,
     get_plugin_paths,
     parse_scenario_arg,
     parse_test_output,
     validate_scenarios,
 )
+from docker_runner import build_simple_skill_test_command
 
 # Default timeout per scenario (20 minutes - Claude calls take time even with mocks)
 DEFAULT_SCENARIO_TIMEOUT = 1200
@@ -69,7 +68,7 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
     """
     start_time = time.time()
 
-    plugin_path, lib_path, dist_path = get_plugin_paths()
+    plugin_path, _, _ = get_plugin_paths()
 
     if not plugin_path.exists():
         return ScenarioResult(
@@ -79,35 +78,13 @@ def run_scenario_test(scenario: str, verbose: bool = False, timeout: int = DEFAU
             error=f"Plugin not found at {plugin_path}",
         )
 
-    # Get Claude auth token
-    claude_token = get_claude_token()
-
-    # Build docker command (matching test-skill-mock-dev pattern)
-    cmd = [
-        "docker", "run", "--rm",
-        "--network", DEMO_NETWORK,
-        "-e", "JIRA_MOCK_MODE=true",
-        "-e", "PYTHONPATH=/workspace/patches",
-        "-e", "OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318",
-        "-e", "LOKI_ENDPOINT=http://lgtm:3100",
-        "-e", f"CLAUDE_CODE_OAUTH_TOKEN={claude_token}",
-        "-v", f"{plugin_path}:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro",
-        "-v", f"{dist_path}:/opt/jira-dist:ro",
-        "-v", f"{PROJECT_ROOT}/demo-container/patches:/workspace/patches:ro",
-        "--entrypoint", "bash",
-        "jira-demo-container:latest",
-        "-c",
-    ]
-
-    # Inner command: install wheel (for jira-as CLI), symlink plugin, run test from /tmp with fix-context
-    inner_cmd = (
-        "pip install -q /opt/jira-dist/*.whl 2>/dev/null; "
-        "rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
-        "ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
-        f"cd /tmp && python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "
-        f"--mock --fix-context {JIRA_SKILLS_PATH}"
+    # Build docker command using shared builder
+    cmd, inner_cmd = build_simple_skill_test_command(
+        scenario=scenario,
+        mock_mode=True,
+        fix_context=True,
+        verbose=verbose,
     )
-
     cmd.append(inner_cmd)
 
     if verbose:

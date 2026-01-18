@@ -33,12 +33,12 @@ from parallel_test_common import (
     PROJECT_ROOT,
     SCENARIOS_DIR,
     ensure_network_exists,
-    get_claude_token,
     get_plugin_paths,
     parse_scenario_arg,
     parse_test_output,
     validate_scenarios,
 )
+from docker_runner import build_refine_skill_test_command
 
 # Timeouts
 DEFAULT_TEST_TIMEOUT = 600  # 10 min per test attempt
@@ -90,54 +90,14 @@ def run_skill_test(
 
     Returns: (all_passed, fix_context_or_none)
     """
-    plugin_path, lib_path, dist_path = get_plugin_paths()
-    claude_token = get_claude_token()
-
-    # Session persistence directory (must match Makefile)
-    sessions_dir = Path("/tmp/claude-sessions")
-    sessions_dir.mkdir(parents=True, exist_ok=True)
-
-    cmd = [
-        "docker", "run", "--rm",
-        "--network", DEMO_NETWORK,
-        "-e", "JIRA_MOCK_MODE=true",
-        "-e", "PYTHONPATH=/workspace/patches",
-        "-e", "OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318",
-        "-e", "LOKI_ENDPOINT=http://lgtm:3100",
-        "-e", f"CLAUDE_CODE_OAUTH_TOKEN={claude_token}",
-        # Plugin and library mounts
-        "-v", f"{plugin_path}:/home/devuser/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/dev:ro",
-        "-v", f"{dist_path}:/opt/jira-dist:ro",
-        "-v", f"{PROJECT_ROOT}/demo-container/patches:/workspace/patches:ro",
-        # Local skill-test.py and scenarios (not baked-in)
-        "-v", f"{PROJECT_ROOT}/demo-container/skill-test.py:/workspace/skill-test.py:ro",
-        "-v", f"{PROJECT_ROOT}/demo-container/scenarios:/workspace/scenarios:ro",
-        # Session and checkpoint persistence
-        "-v", f"{sessions_dir}:/home/devuser/.claude/projects:rw",
-        "-v", "/tmp/checkpoints:/tmp/checkpoints",
-        "--entrypoint", "bash",
-        "jira-demo-container:latest",
-        "-c",
-    ]
-
-    inner_cmd = (
-        "pip install -q /opt/jira-dist/*.whl 2>/dev/null; "
-        "rm -f ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
-        "ln -sf dev ~/.claude/plugins/cache/jira-assistant-skills/jira-assistant-skills/2.2.7 2>/dev/null; "
-        "mkdir -p /tmp/checkpoints; "
-        f"cd /tmp && python /workspace/skill-test.py /workspace/scenarios/{scenario}.prompts "
-        f"--mock --conversation --fail-fast --fix-context {JIRA_SKILLS_PATH}"
+    # Build docker command using shared builder
+    cmd, inner_cmd = build_refine_skill_test_command(
+        scenario=scenario,
+        checkpoint_file=checkpoint_file or f"/tmp/checkpoints/{scenario}.json",
+        fork_from=fork_from,
+        prompt_index=prompt_index,
+        verbose=verbose,
     )
-
-    if checkpoint_file:
-        inner_cmd += f" --checkpoint-file {checkpoint_file}"
-    if fork_from is not None:
-        inner_cmd += f" --fork-from {fork_from}"
-    if prompt_index is not None:
-        inner_cmd += f" --prompt-index {prompt_index}"
-    if verbose:
-        inner_cmd += " --verbose"
-
     cmd.append(inner_cmd)
 
     try:
