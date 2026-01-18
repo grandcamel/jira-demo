@@ -16,11 +16,33 @@ DEMO_NETWORK = os.environ.get("DEMO_NETWORK", "demo-telemetry-network")
 PROJECT_ROOT = Path(__file__).parent.parent
 SCENARIOS_DIR = PROJECT_ROOT / "demo-container" / "scenarios"
 
-# Default JIRA skills path - can be overridden via env var
-JIRA_SKILLS_PATH = os.environ.get(
-    "JIRA_SKILLS_PATH",
-    "/Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills"
-)
+
+def _detect_jira_skills_path() -> str:
+    """
+    Detect JIRA skills path with fallback chain.
+
+    Order of precedence:
+    1. JIRA_SKILLS_PATH environment variable
+    2. Sibling directory: ../Jira-Assistant-Skills (relative to project root)
+    3. Raises error with instructions
+    """
+    # Check environment variable first
+    env_path = os.environ.get("JIRA_SKILLS_PATH")
+    if env_path:
+        return env_path
+
+    # Try sibling directory (common development layout)
+    sibling_path = PROJECT_ROOT.parent / "Jira-Assistant-Skills"
+    if sibling_path.exists():
+        return str(sibling_path)
+
+    # No valid path found - return empty and let callers handle validation
+    # This allows the module to import without error, but get_plugin_paths() will fail
+    return ""
+
+
+# JIRA skills path - auto-detected or from env var
+JIRA_SKILLS_PATH = _detect_jira_skills_path()
 
 # All main scenarios (excluding test scenarios)
 ALL_SCENARIOS = [
@@ -74,8 +96,24 @@ def get_plugin_paths() -> tuple[Path, Path, Path]:
 
     Returns:
         Tuple of (plugin_path, lib_path, dist_path)
+
+    Raises:
+        ValueError: If JIRA_SKILLS_PATH is not configured or doesn't exist
     """
+    if not JIRA_SKILLS_PATH:
+        raise ValueError(
+            "JIRA_SKILLS_PATH not configured. Either:\n"
+            "  1. Set JIRA_SKILLS_PATH environment variable, or\n"
+            "  2. Clone Jira-Assistant-Skills as sibling directory:\n"
+            f"     git clone <repo> {PROJECT_ROOT.parent}/Jira-Assistant-Skills"
+        )
+
     skills_path = Path(JIRA_SKILLS_PATH)
+    if not skills_path.exists():
+        raise ValueError(
+            f"JIRA_SKILLS_PATH does not exist: {skills_path}\n"
+            "Check path or set JIRA_SKILLS_PATH environment variable."
+        )
 
     # Try different plugin path patterns
     plugin_path = skills_path / "plugins" / "jira-assistant-skills"
