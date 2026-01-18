@@ -351,15 +351,27 @@ def run_parallel_refinement(
     print(f"Scenarios: {', '.join(scenarios)}\n", flush=True)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_scenario = {
-            executor.submit(
-                run_refinement_loop,
-                scenario,
-                max_attempts,
-                verbose,
-            ): scenario
-            for scenario in scenarios
-        }
+        # Submit all scenarios with exception handling
+        future_to_scenario = {}
+        for scenario in scenarios:
+            try:
+                future = executor.submit(
+                    run_refinement_loop,
+                    scenario,
+                    max_attempts,
+                    verbose,
+                )
+                future_to_scenario[future] = scenario
+            except Exception as e:
+                # Handle submission failure (e.g., resource exhaustion)
+                results.append(ScenarioResult(
+                    scenario=scenario,
+                    passed=False,
+                    total_attempts=0,
+                    duration_seconds=0,
+                    error=f"Failed to submit: {e}",
+                ))
+                print(f"  [{scenario}] SUBMIT ERROR: {e}", flush=True)
 
         for future in as_completed(future_to_scenario):
             scenario = future_to_scenario[future]

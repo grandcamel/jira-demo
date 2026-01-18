@@ -234,11 +234,21 @@ def run_parallel_tests(
     print(f"Scenarios: {', '.join(scenarios)}\n")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all scenarios
-        future_to_scenario = {
-            executor.submit(run_scenario_test, scenario, verbose, timeout): scenario
-            for scenario in scenarios
-        }
+        # Submit all scenarios with exception handling
+        future_to_scenario = {}
+        for scenario in scenarios:
+            try:
+                future = executor.submit(run_scenario_test, scenario, verbose, timeout)
+                future_to_scenario[future] = scenario
+            except Exception as e:
+                # Handle submission failure (e.g., resource exhaustion)
+                results.append(ScenarioResult(
+                    scenario=scenario,
+                    passed=False,
+                    duration_seconds=0,
+                    error=f"Failed to submit: {e}",
+                ))
+                print(f"  [{scenario}] SUBMIT ERROR: {e}")
 
         # Collect results as they complete
         for future in as_completed(future_to_scenario):

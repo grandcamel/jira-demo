@@ -33,6 +33,7 @@ Fast Iteration with Checkpoints:
 """
 
 import argparse
+import atexit
 import fcntl
 import json
 import os
@@ -168,6 +169,33 @@ def _checkpoint_lock(checkpoint_file: Path, exclusive: bool = False):
             except OSError:
                 pass  # Ignore unlock errors during cleanup
             lock_fd.close()
+
+
+def _cleanup_old_lock_files(max_age_seconds: int = 3600) -> None:
+    """
+    Clean up old checkpoint lock files from /tmp.
+
+    Lock files older than max_age_seconds are removed. This is safe because
+    if a lock file is that old, no active process should be holding it.
+
+    Args:
+        max_age_seconds: Maximum age in seconds before a lock file is removed (default: 1 hour)
+    """
+    import glob
+    import os
+
+    lock_pattern = "/tmp/checkpoint_*.lock"
+    current_time = time.time()
+
+    for lock_path in glob.glob(lock_pattern):
+        try:
+            stat = os.stat(lock_path)
+            age = current_time - stat.st_mtime
+            if age > max_age_seconds:
+                os.unlink(lock_path)
+        except OSError:
+            # File might have been deleted by another process
+            pass
 
 
 def _load_checkpoints_file(checkpoint_file: Path) -> dict:
@@ -1014,6 +1042,13 @@ def generate_fix_context(result: PromptResult, skills_path: str) -> dict[str, An
     """Generate fix context for the skill-fix agent."""
     import subprocess
 
+    # Validate skills_path to prevent path traversal
+    skills_path_obj = Path(skills_path).resolve()
+    if not skills_path_obj.is_absolute():
+        raise ValueError(f"skills_path must be absolute: {skills_path}")
+    if not skills_path_obj.exists():
+        raise ValueError(f"skills_path does not exist: {skills_path}")
+
     context: dict[str, Any] = {
         "failure": {
             "prompt_index": result.spec.index,
@@ -1040,9 +1075,9 @@ def generate_fix_context(result: PromptResult, skills_path: str) -> dict[str, An
 
     # Find relevant skill files based on the prompt
     # Try both possible locations for the plugin
-    plugin_path = Path(skills_path) / "plugins" / "jira-assistant-skills"
+    plugin_path = skills_path_obj / "plugins" / "jira-assistant-skills"
     if not plugin_path.exists():
-        plugin_path = Path(skills_path) / "jira-assistant-skills"
+        plugin_path = skills_path_obj / "jira-assistant-skills"
     skills_dir = plugin_path / "skills"
 
     if skills_dir.exists():
@@ -1078,7 +1113,7 @@ def generate_fix_context(result: PromptResult, skills_path: str) -> dict[str, An
     try:
         git_log = subprocess.run(
             ["git", "log", "--oneline", "-10", "--", "jira-assistant-skills/skills/"],
-            cwd=skills_path,
+            cwd=skills_path_obj,
             capture_output=True,
             text=True,
             timeout=10,
@@ -1096,7 +1131,7 @@ def generate_fix_context(result: PromptResult, skills_path: str) -> dict[str, An
 
     # Check if library code might be relevant (API errors, etc.)
     if "error" in result.response_text.lower() or result.quality == "low":
-        lib_path = Path(skills_path) / "jira-assistant-skills-lib" / "src" / "jira_assistant_skills_lib"
+        lib_path = skills_path_obj / "jira-assistant-skills-lib" / "src" / "jira_assistant_skills_lib"
         if lib_path.exists():
             # Add search.py if relevant to search failures
             search_path = lib_path / "search.py"
@@ -1380,6 +1415,9 @@ def run_skill_test(
             },
         )
 
+    # Clean up old lock files from previous test runs
+    _cleanup_old_lock_files()
+
     return results
 
 
@@ -1477,6 +1515,8 @@ Telemetry (enabled by default):
         scenario=scenario_name,
         debug=not args.no_debug,
     )
+    # Register shutdown to ensure telemetry flushes on any exit path
+    atexit.register(shutdown_telemetry)
 
     results = run_skill_test(
         prompts_file=args.prompts_file,
