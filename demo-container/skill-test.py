@@ -44,152 +44,45 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-import requests
 import yaml  # type: ignore[import-untyped]
 
 # =============================================================================
-# Telemetry Setup
+# Telemetry Setup (imported from shared module)
 # =============================================================================
 
-# OpenTelemetry imports - optional dependency
-try:
-    from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.trace import Status, StatusCode
+# Add /workspace to path for otel_setup import
+sys.path.insert(0, "/workspace")
 
-    OTEL_AVAILABLE = True
+try:
+    from otel_setup import (
+        init_telemetry,
+        shutdown_telemetry,
+        log_to_loki,
+        get_tracer,
+        OTEL_AVAILABLE,
+    )
+    if OTEL_AVAILABLE:
+        from opentelemetry.trace import Status, StatusCode
 except ImportError:
+    # Fallback if otel_setup not available
     OTEL_AVAILABLE = False
 
-# Module-level tracer and config
-_tracer: Optional[Any] = None
-_loki_endpoint: Optional[str] = None
-_debug_enabled: bool = True
-_scenario_name: str = "unknown"
-
-
-# Module-level provider for shutdown
-_trace_provider: Optional[Any] = None
-
-
-def init_telemetry(
-    service_name: str = "skill-test",
-    scenario: str = "unknown",
-    debug: bool = True,
-) -> Optional[Any]:
-    """Initialize OpenTelemetry tracing and Loki logging."""
-    global _tracer, _loki_endpoint, _debug_enabled, _scenario_name, _trace_provider
-
-    _debug_enabled = debug
-    _scenario_name = scenario
-
-    if not debug:
-        print("[OTEL] Debug mode disabled, telemetry off", file=sys.stderr)
+    def init_telemetry(*args, **kwargs):
         return None
 
-    # Configure endpoints
-    otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
-    _loki_endpoint = os.environ.get("LOKI_ENDPOINT", "http://localhost:3100")
+    def shutdown_telemetry():
+        pass
 
-    # For Docker containers, use host.docker.internal
-    if os.path.exists("/.dockerenv"):
-        otel_endpoint = os.environ.get(
-            "OTEL_EXPORTER_OTLP_ENDPOINT", "http://host.docker.internal:4318"
-        )
-        _loki_endpoint = os.environ.get(
-            "LOKI_ENDPOINT", "http://host.docker.internal:3100"
-        )
+    def log_to_loki(*args, **kwargs):
+        pass
 
-    # Initialize tracing if available
-    if OTEL_AVAILABLE:
-        try:
-            resource = Resource.create({
-                "service.name": service_name,
-                "service.version": "1.0.0",
-                "scenario": scenario,
-            })
-
-            _trace_provider = TracerProvider(resource=resource)
-            exporter = OTLPSpanExporter(endpoint=f"{otel_endpoint}/v1/traces")
-            _trace_provider.add_span_processor(BatchSpanProcessor(exporter))
-            trace.set_tracer_provider(_trace_provider)
-            _tracer = trace.get_tracer(service_name)
-
-            print(f"[OTEL] Tracing initialized -> {otel_endpoint}", file=sys.stderr)
-        except Exception as e:
-            print(f"[OTEL] Failed to initialize tracing: {e}", file=sys.stderr)
-            _tracer = None
-    else:
-        print("[OTEL] OpenTelemetry not installed, tracing disabled", file=sys.stderr)
-
-    print(f"[OTEL] Loki logging -> {_loki_endpoint}", file=sys.stderr)
-    return _tracer
-
-
-def shutdown_telemetry() -> None:
-    """Shutdown telemetry and flush all pending spans."""
-    global _trace_provider
-    if _trace_provider is not None:
-        try:
-            _trace_provider.force_flush(timeout_millis=5000)
-            _trace_provider.shutdown()
-            print("[OTEL] Telemetry shutdown complete", file=sys.stderr)
-        except Exception as e:
-            print(f"[OTEL] Shutdown error: {e}", file=sys.stderr)
-
-
-def log_to_loki(
-    message: str,
-    level: str = "info",
-    labels: Optional[dict] = None,
-    extra: Optional[dict] = None,
-) -> None:
-    """Send a log entry to Loki."""
-    if not _debug_enabled or not _loki_endpoint:
-        return
-
-    try:
-        timestamp_ns = str(int(time.time() * 1e9))
-
-        # Build log line with extra data
-        log_data = {"message": message, "level": level}
-        if extra:
-            log_data.update(extra)
-
-        log_line = json.dumps(log_data)
-
-        # Build stream labels
-        stream_labels = {
-            "job": "skill-test",
-            "scenario": _scenario_name,
-            "level": level,
-        }
-        if labels:
-            stream_labels.update(labels)
-
-        payload = {
-            "streams": [{
-                "stream": stream_labels,
-                "values": [[timestamp_ns, log_line]],
-            }]
-        }
-
-        # Fire and forget
-        requests.post(
-            f"{_loki_endpoint}/loki/api/v1/push",
-            json=payload,
-            timeout=2,
-        )
-    except Exception:
-        pass  # Don't fail tests due to logging issues
+    def get_tracer():
+        return None
 
 
 def _set_span_attribute(span, key: str, value) -> None:
     """Set a span attribute, converting to string if needed."""
-    if value is None:
+    if value is None or span is None:
         return
     if isinstance(value, (int, float, bool)):
         span.set_attribute(key, value)
@@ -205,6 +98,7 @@ def trace_span(
 ):
     """Context manager for creating trace spans with timing."""
     start_time = time.time()
+    _tracer = get_tracer()
 
     if _tracer is None:
         yield None
@@ -216,11 +110,13 @@ def trace_span(
                 _set_span_attribute(span, key, value)
         try:
             yield span
-            span.set_status(Status(StatusCode.OK))
+            if OTEL_AVAILABLE:
+                span.set_status(Status(StatusCode.OK))
         except Exception as e:
-            span.set_status(Status(StatusCode.ERROR, str(e)))
-            if record_exception:
-                span.record_exception(e)
+            if OTEL_AVAILABLE:
+                span.set_status(Status(StatusCode.ERROR, str(e)))
+                if record_exception:
+                    span.record_exception(e)
             raise
         finally:
             duration_ms = (time.time() - start_time) * 1000

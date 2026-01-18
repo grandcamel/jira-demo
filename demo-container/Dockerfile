@@ -36,6 +36,10 @@ RUN chown -R devuser:node /workspace/scenarios
 COPY autoplay.sh /workspace/autoplay.sh
 RUN chmod 755 /workspace/autoplay.sh && chown devuser:node /workspace/autoplay.sh
 
+# Copy telemetry setup module (symlinked from scripts/otel_setup.py)
+COPY otel_setup.py /workspace/otel_setup.py
+RUN chmod 644 /workspace/otel_setup.py && chown devuser:node /workspace/otel_setup.py
+
 # Copy skill test runner
 COPY skill-test.py /workspace/skill-test.py
 RUN chmod 755 /workspace/skill-test.py && chown devuser:node /workspace/skill-test.py
