@@ -435,6 +435,15 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 | Skill → setup → Bash exploration | CLI command failed | Check `which jira-as`; rebuild wheel with `hatch build` in `jira-assistant-skills-lib/` |
 | "Tool accuracy: partial" with `['Skill', 'Bash']` | **FALSE NEGATIVE** | Test expectations wrong; `Skill → Bash` is correct |
 
+## Related Projects
+
+| Project | Purpose |
+|---------|---------|
+| [JIRA Assistant Skills](https://github.com/grandcamel/Jira-Assistant-Skills) | Source plugin |
+| [jira-assistant-skills-lib](https://pypi.org/project/jira-assistant-skills/) | Shared library and CLI |
+| [confluence-demo](https://github.com/grandcamel/confluence-demo) | Similar demo for Confluence |
+| [splunk-demo](https://github.com/grandcamel/splunk-demo) | Similar demo for Splunk |
+
 ## Level 2 Reference
 
 Detailed documentation in `docs/CLAUDE-L2.md`:
