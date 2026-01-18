@@ -20,6 +20,10 @@ from pathlib import Path
 from typing import Optional
 
 from parallel_test_common import (
+    CHECKPOINTS_DIR,
+    CLAUDE_SESSIONS_DIR,
+    CONTAINER_CHECKPOINTS_DIR,
+    CONTAINER_SESSIONS_DIR,
     DEMO_NETWORK,
     JIRA_SKILLS_PATH,
     PROJECT_ROOT,
@@ -59,7 +63,7 @@ class SkillTestConfig:
     mount_checkpoints: bool = False  # Mount checkpoints dir
 
     # Session directory (only used if mount_sessions=True)
-    sessions_dir: Path = field(default_factory=lambda: Path("/tmp/claude-sessions"))
+    sessions_dir: Path = field(default_factory=lambda: CLAUDE_SESSIONS_DIR)
 
     # Extra test arguments
     extra_args: list[str] = field(default_factory=list)
@@ -129,12 +133,12 @@ def build_skill_test_command(config: SkillTestConfig) -> tuple[list[str], str]:
 
     if config.mount_sessions:
         cmd.extend([
-            "-v", f"{config.sessions_dir}:/home/devuser/.claude/projects:rw",
+            "-v", f"{config.sessions_dir}:{CONTAINER_SESSIONS_DIR}:rw",
         ])
 
     if config.mount_checkpoints:
         cmd.extend([
-            "-v", "/tmp/checkpoints:/tmp/checkpoints",
+            "-v", f"{CHECKPOINTS_DIR}:{CONTAINER_CHECKPOINTS_DIR}",
         ])
 
     # Entrypoint
@@ -155,7 +159,7 @@ def build_skill_test_command(config: SkillTestConfig) -> tuple[list[str], str]:
     ]
 
     if config.mount_checkpoints:
-        inner_parts.append("mkdir -p /tmp/checkpoints")
+        inner_parts.append(f"mkdir -p {CONTAINER_CHECKPOINTS_DIR}")
 
     # Build skill-test.py command
     test_cmd_parts = [

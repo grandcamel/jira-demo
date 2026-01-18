@@ -33,6 +33,7 @@ from parallel_test_common import (
     PROJECT_ROOT,
     SCENARIOS_DIR,
     ensure_network_exists,
+    get_checkpoint_file,
     get_plugin_paths,
     parse_scenario_arg,
     parse_test_output,
@@ -93,7 +94,7 @@ def run_skill_test(
     # Build docker command using shared builder
     cmd, inner_cmd = build_refine_skill_test_command(
         scenario=scenario,
-        checkpoint_file=checkpoint_file or f"/tmp/checkpoints/{scenario}.json",
+        checkpoint_file=checkpoint_file or get_checkpoint_file(scenario),
         fork_from=fork_from,
         prompt_index=prompt_index,
         verbose=verbose,
@@ -251,7 +252,7 @@ def run_refinement_loop(
     - Maintain fix agent session across attempts
     """
     start_time = time.time()
-    checkpoint_file = f"/tmp/checkpoints/{scenario}.json"
+    checkpoint_file = get_checkpoint_file(scenario)
     fix_session_id: Optional[str] = None
     attempt_history: list[dict] = []
     attempts: list[AttemptResult] = []
