@@ -435,6 +435,72 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 | Skill → setup → Bash exploration | CLI command failed | Check `which jira-as`; rebuild wheel with `hatch build` in `jira-assistant-skills-lib/` |
 | "Tool accuracy: partial" with `['Skill', 'Bash']` | **FALSE NEGATIVE** | Test expectations wrong; `Skill → Bash` is correct |
 
+## Shared Library
+
+This project uses `@demo-platform/queue-manager-core` for common queue-manager functionality shared across jira-demo, confluence-demo, and splunk-demo.
+
+### Location
+
+```
+demo-platform-shared/packages/queue-manager-core/
+├── lib/
+│   ├── index.js       # Main exports
+│   ├── session.js     # Session token generation/validation
+│   ├── rate-limit.js  # Connection and invite rate limiting
+│   ├── env-file.js    # Secure environment file management
+│   └── metrics.js     # OpenTelemetry metrics factory
+├── test/              # Unit tests (16 tests)
+└── package.json
+```
+
+### What's Shared
+
+| Component | File | Usage |
+|-----------|------|-------|
+| Session tokens | `session.js` | HMAC-SHA256 token generation and validation |
+| Rate limiting | `rate-limit.js` | Connection and invite brute-force protection |
+| Env files | `env-file.js` | Secure credential file creation with 0600 permissions |
+| Metrics | `metrics.js` | Standardized OpenTelemetry counters, histograms, gauges |
+
+### Usage in This Project
+
+```javascript
+// config/metrics.js
+const { createMetrics } = require('@demo-platform/queue-manager-core');
+const metricsManager = createMetrics({ serviceName: 'jira-demo-queue-manager', ... });
+
+// services/session.js
+const { generateSessionToken, createSessionEnvFile } = require('@demo-platform/queue-manager-core');
+const token = generateSessionToken(sessionId, config.SESSION_SECRET);
+const envFile = createSessionEnvFile(sessionId, envVars, { containerPath, hostPath });
+
+// handlers/websocket.js, services/invite.js
+const { createConnectionRateLimiter, createInviteRateLimiter } = require('@demo-platform/queue-manager-core');
+```
+
+### Updating the Shared Library
+
+1. Make changes in `demo-platform-shared/packages/queue-manager-core/`
+2. Run tests: `cd demo-platform-shared/packages/queue-manager-core && npm test`
+3. Update all consuming projects: `npm install` in each queue-manager directory
+4. Verify each project loads correctly: `node -e "require('./config'); console.log('OK')"`
+
+### Shared Docker/Makefile Includes
+
+Docker Compose fragments and Makefile includes are available in:
+
+```
+demo-platform-shared/
+├── docker/compose-fragments/
+│   ├── security-constraints.yml  # Container security anchors
+│   ├── logging.yml               # Logging configuration anchors
+│   └── healthcheck.yml           # Health check anchors
+└── makefile-includes/
+    ├── common.mk                 # Common dev/deploy targets
+    ├── skill-testing.mk          # Skill test targets
+    └── invites.mk                # Invite management targets
+```
+
 ## Related Projects
 
 | Project | Purpose |

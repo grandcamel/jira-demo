@@ -47,9 +47,18 @@ services:
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_METRICS_EXPORTER=otlp
       - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      # Host path for session env files (used for --env-file in spawned containers)
+      - SESSION_ENV_HOST_PATH=${PWD}/session-env
     volumes:
+      # SECURITY: Docker socket is required to spawn demo containers.
+      # Mitigations applied in server.js:
+      # - Spawned containers have memory/CPU/PID limits
+      # - Capabilities dropped (only CHOWN, SETUID, SETGID, DAC_OVERRIDE retained)
+      # - no-new-privileges flag prevents privilege escalation
+      # - Read-only root filesystem with tmpfs for /tmp and /home
       - /var/run/docker.sock:/var/run/docker.sock
       - ./secrets:/secrets:ro
+      - ./session-env:/run/session-env
       - ./demo-container:/opt/demo-container:ro
       - ./scripts:/opt/scripts:ro
     depends_on:

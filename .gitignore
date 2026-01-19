@@ -4,6 +4,9 @@ secrets/
 *.pem
 *.key
 
+# Session environment files (contain credentials)
+session-env/
+
 # Local Claude plugin development
 .claude-plugin/
 grafana-skills/
