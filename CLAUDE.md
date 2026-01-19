@@ -505,10 +505,12 @@ demo-platform-shared/
 
 | Project | Purpose |
 |---------|---------|
+| as-demo (local: `../as-demo`) | Unified platform (Confluence + JIRA + Splunk) |
 | [JIRA Assistant Skills](https://github.com/grandcamel/Jira-Assistant-Skills) | Source plugin |
 | [jira-assistant-skills-lib](https://pypi.org/project/jira-assistant-skills/) | Shared library and CLI |
 | [confluence-demo](https://github.com/grandcamel/confluence-demo) | Similar demo for Confluence |
 | [splunk-demo](https://github.com/grandcamel/splunk-demo) | Similar demo for Splunk |
+| demo-platform-shared (local: `../demo-platform-shared`) | Shared queue-manager-core library |
 
 ## Level 2 Reference
 
