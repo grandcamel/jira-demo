@@ -8,6 +8,22 @@ const { marked } = require('marked');
 const DOMPurify = require('isomorphic-dompurify');
 const config = require('../config');
 
+/**
+ * Check if a file path is safely within the base directory.
+ * Uses path.relative() for more robust path traversal protection.
+ * @param {string} filePath - The file path to validate
+ * @param {string} basePath - The base directory that should contain the file
+ * @returns {boolean} True if filePath is within basePath
+ */
+function isPathWithinBase(filePath, basePath) {
+  const resolvedPath = path.resolve(filePath);
+  const resolvedBase = path.resolve(basePath);
+  const relative = path.relative(resolvedBase, resolvedPath);
+
+  // Reject if path escapes base (starts with ..) or is absolute
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 // Load HTML template at module load (cached)
 let scenarioTemplate;
 try {
@@ -41,13 +57,12 @@ function register(app) {
     const filePath = path.join(config.SCENARIOS_PATH, scenario.file);
 
     // Path traversal protection: ensure resolved path is within SCENARIOS_PATH
-    const resolvedPath = path.resolve(filePath);
-    const resolvedBase = path.resolve(config.SCENARIOS_PATH);
-    if (!resolvedPath.startsWith(resolvedBase + path.sep) && resolvedPath !== resolvedBase) {
-      console.error(`Path traversal attempt blocked: ${filePath} resolved to ${resolvedPath}`);
+    if (!isPathWithinBase(filePath, config.SCENARIOS_PATH)) {
+      console.error(`Path traversal attempt blocked: ${filePath}`);
       return res.status(400).json({ error: 'Invalid path' });
     }
 
+    const resolvedPath = path.resolve(filePath);
     fs.readFile(resolvedPath, 'utf8', (err, markdown) => {
       if (err) {
         console.error(`Error reading scenario ${scenarioName}:`, err);

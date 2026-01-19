@@ -6,6 +6,18 @@
  * Supports invite-based access control.
  */
 
+/**
+ * Create a session cookie with proper security attributes.
+ * Uses SameSite=Strict for CSRF protection and Secure flag on HTTPS.
+ * @param {string} name - Cookie name
+ * @param {string} value - Cookie value
+ * @returns {string} - Formatted cookie string
+ */
+function createSessionCookie(name, value) {
+    const isSecure = window.location.protocol === 'https:';
+    return `${name}=${value}; path=/; SameSite=Strict${isSecure ? '; Secure' : ''}`;
+}
+
 class QueueClient {
     constructor() {
         this.ws = null;
@@ -155,7 +167,7 @@ class QueueClient {
             case 'session_token':
                 // Set session cookie immediately on queue join (allows page refresh)
                 if (message.session_token) {
-                    document.cookie = `demo_session=${message.session_token}; path=/; SameSite=Lax`;
+                    document.cookie = createSessionCookie('demo_session', message.session_token);
                 }
                 break;
 
@@ -202,7 +214,7 @@ class QueueClient {
 
         // Set session cookie for Grafana access
         if (message.session_token) {
-            document.cookie = `demo_session=${message.session_token}; path=/; SameSite=Lax`;
+            document.cookie = createSessionCookie('demo_session', message.session_token);
         }
 
         // Show terminal overlay

@@ -16,6 +16,7 @@ Usage:
 """
 
 import os
+import re
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,6 +33,10 @@ from parallel_test_common import (
     get_claude_token,
     get_plugin_paths,
 )
+
+# Valid patterns for user inputs
+VALID_SCENARIO_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
+VALID_MODELS = frozenset({'sonnet', 'opus', 'haiku'})
 
 
 @dataclass
@@ -109,7 +114,30 @@ def build_skill_test_command(config: SkillTestConfig) -> tuple[list[str], str]:
     Returns:
         Tuple of (docker_cmd_list, inner_bash_command)
         Use as: subprocess.run(docker_cmd + [inner_cmd], ...)
+
+    Raises:
+        ValueError: If config contains invalid values
     """
+    # Validate scenario name (alphanumeric, hyphen, underscore only)
+    if not VALID_SCENARIO_PATTERN.match(config.scenario):
+        raise ValueError(
+            f"Invalid scenario name: {config.scenario}. "
+            "Must be alphanumeric with hyphens/underscores only."
+        )
+
+    # Validate model names
+    if config.model not in VALID_MODELS:
+        raise ValueError(
+            f"Invalid model: {config.model}. "
+            f"Must be one of: {', '.join(sorted(VALID_MODELS))}"
+        )
+
+    if config.judge_model not in VALID_MODELS:
+        raise ValueError(
+            f"Invalid judge_model: {config.judge_model}. "
+            f"Must be one of: {', '.join(sorted(VALID_MODELS))}"
+        )
+
     plugin_path, lib_path, dist_path = get_plugin_paths()
     claude_token = get_claude_token()
 

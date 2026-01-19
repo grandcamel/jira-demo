@@ -2,7 +2,48 @@
  * Configuration constants for the queue manager.
  */
 
-module.exports = {
+// Known weak secrets that should not be used in production
+const WEAK_SECRETS = [
+  'change-me-in-production',
+  'secret',
+  'password',
+  'demo',
+  'test',
+  'changeme',
+  'admin',
+  '123456'
+];
+
+/**
+ * Validates the session secret strength.
+ * In production, weak secrets or short secrets cause a fatal exit.
+ * In development, warnings are logged but execution continues.
+ * @param {string} secret - The session secret to validate
+ * @param {boolean} isProduction - Whether running in production mode
+ */
+function validateSessionSecret(secret, isProduction) {
+  const isWeak = WEAK_SECRETS.some(weak =>
+    secret.toLowerCase() === weak.toLowerCase()
+  );
+
+  if (isWeak) {
+    if (isProduction) {
+      console.error('FATAL: SESSION_SECRET is a known weak value. Use a strong random secret.');
+      process.exit(1);
+    }
+    console.warn('WARNING: Using weak SESSION_SECRET - not suitable for production');
+  }
+
+  if (secret.length < 32) {
+    if (isProduction) {
+      console.error('FATAL: SESSION_SECRET must be at least 32 characters');
+      process.exit(1);
+    }
+    console.warn('WARNING: SESSION_SECRET should be at least 32 characters');
+  }
+}
+
+const config = {
   // Server
   PORT: process.env.PORT || 3000,
   REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
@@ -52,3 +93,8 @@ module.exports = {
     'observability': { file: 'observability.md', title: 'Observability', icon: '📊' }
   }
 };
+
+// Validate session secret on module load
+validateSessionSecret(config.SESSION_SECRET, process.env.NODE_ENV === 'production');
+
+module.exports = config;

@@ -5,6 +5,13 @@
 const config = require('../config');
 const state = require('../services/state');
 const { checkInviteRateLimit, recordFailedInviteAttempt, validateInvite } = require('../services/invite');
+const { createRateLimiter } = require('@demo-platform/queue-manager-core');
+
+// Rate limiter for session cookie endpoint (20 requests per minute per IP)
+const cookieRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  maxAttempts: 20
+});
 
 /**
  * Register session routes.
@@ -47,6 +54,13 @@ function register(app, redis) {
   // Set session cookie with secure attributes
   app.post('/api/session/cookie', (req, res) => {
     const { token } = req.body;
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+
+    // Rate limit check
+    const rateLimit = cookieRateLimiter.check(clientIp);
+    if (!rateLimit.allowed) {
+      return res.status(429).json({ error: 'Too many requests', retryAfter: rateLimit.retryAfter });
+    }
 
     if (!token || typeof token !== 'string') {
       return res.status(400).json({ error: 'Token required' });
@@ -58,6 +72,24 @@ function register(app, redis) {
 
     if (!isActiveToken && !isPendingToken) {
       return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // For pending tokens, verify IP matches the original requestor
+    if (isPendingToken) {
+      const pendingData = state.pendingSessionTokens.get(token);
+      if (pendingData && pendingData.ip !== clientIp) {
+        console.log(`Session cookie IP mismatch: expected ${pendingData.ip}, got ${clientIp}`);
+        return res.status(403).json({ error: 'Token IP mismatch' });
+      }
+    }
+
+    // For active session tokens, verify IP matches the session owner
+    if (isActiveToken) {
+      const activeSession = state.getActiveSession();
+      if (activeSession && activeSession.ip !== clientIp) {
+        console.log(`Session cookie IP mismatch: expected ${activeSession.ip}, got ${clientIp}`);
+        return res.status(403).json({ error: 'Token IP mismatch' });
+      }
     }
 
     // Set secure cookie
