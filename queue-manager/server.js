@@ -36,6 +36,7 @@ const state = require('./services/state');
 const { processQueue } = require('./services/queue');
 const { endSession } = require('./services/session');
 const { cleanupRateLimits: cleanupInviteRateLimits } = require('./services/invite');
+const { cleanupRateLimits: cleanupSessionRateLimits } = require('./routes/session');
 
 // Routes
 const healthRoutes = require('./routes/health');
@@ -133,6 +134,7 @@ try {
 setInterval(() => {
   websocketHandlers.cleanupRateLimits();
   cleanupInviteRateLimits();
+  cleanupSessionRateLimits();
 }, 5 * 60 * 1000);
 
 // Start server

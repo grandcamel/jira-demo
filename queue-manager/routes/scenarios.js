@@ -20,8 +20,9 @@ function isPathWithinBase(filePath, basePath) {
   const resolvedBase = path.resolve(basePath);
   const relative = path.relative(resolvedBase, resolvedPath);
 
+  // Empty string means same path (valid)
   // Reject if path escapes base (starts with ..) or is absolute
-  return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 // Load HTML template at module load (cached)

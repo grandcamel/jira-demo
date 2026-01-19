@@ -89,9 +89,10 @@ function runSandboxCleanup() {
 
   console.log('Running JIRA sandbox cleanup...');
 
+  // Only pass required environment variables (principle of least privilege)
   const cleanup = spawn('python3', ['/opt/scripts/cleanup_demo_sandbox.py'], {
     env: {
-      ...process.env,
+      PATH: process.env.PATH,
       JIRA_API_TOKEN: config.JIRA_API_TOKEN,
       JIRA_EMAIL: config.JIRA_EMAIL,
       JIRA_SITE_URL: config.JIRA_SITE_URL,
