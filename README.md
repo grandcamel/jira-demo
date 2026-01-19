@@ -316,6 +316,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 | Project | Purpose |
 |---------|---------|
+| [as-demo](https://github.com/grandcamel/as-demo) | Unified platform (Confluence + JIRA + Splunk) |
 | [JIRA Assistant Skills](https://github.com/grandcamel/jira-assistant-skills) | Claude Code plugin |
 | [claude-devcontainer](https://github.com/grandcamel/claude-devcontainer) | Base container image |
 | [confluence-demo](https://github.com/grandcamel/confluence-demo) | Similar demo for Confluence |
