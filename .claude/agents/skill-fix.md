@@ -23,8 +23,8 @@ Analyze skill test failures and make minimal, targeted changes to fix them. Focu
 ## Key Directories
 
 - **Skills**: `${JIRA_SKILLS_PATH}/plugins/jira-assistant-skills/skills/`
-- **Library**: `${JIRA_SKILLS_PATH}/jira-assistant-skills-lib/src/jira_assistant_skills_lib/`
-- **CLI Commands**: `${JIRA_SKILLS_PATH}/jira-assistant-skills-lib/src/jira_assistant_skills_lib/cli/commands/`
+- **Library**: `${JIRA_SKILLS_PATH}/jira-as/src/jira_as/`
+- **CLI Commands**: `${JIRA_SKILLS_PATH}/jira-as/src/jira_as/cli/commands/`
 
 ## Common Fixes
 

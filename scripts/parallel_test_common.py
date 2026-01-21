@@ -120,9 +120,9 @@ def get_plugin_paths() -> tuple[Path, Path, Path]:
     if not plugin_path.exists():
         plugin_path = skills_path / "jira-assistant-skills"
 
-    lib_path = skills_path / "jira-assistant-skills-lib"
+    lib_path = skills_path / "jira-as"
     # Use consolidated wheel from lib dist (contains both library and CLI)
-    dist_path = skills_path / "jira-assistant-skills-lib" / "dist"
+    dist_path = skills_path / "jira-as" / "dist"
 
     return plugin_path, lib_path, dist_path
 

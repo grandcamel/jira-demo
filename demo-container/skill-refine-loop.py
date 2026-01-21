@@ -54,7 +54,7 @@ def run_skill_test(
     plugin_path = Path(jira_skills_path) / "plugins" / "jira-assistant-skills"
     if not plugin_path.exists():
         plugin_path = Path(jira_skills_path) / "jira-assistant-skills"
-    lib_path = Path(jira_skills_path) / "jira-assistant-skills-lib"
+    lib_path = Path(jira_skills_path) / "jira-as"
 
     # Ensure checkpoint directory exists on host
     checkpoint_dir = Path("/tmp/checkpoints")
@@ -241,7 +241,7 @@ def run_fix_agent(
 ## Relevant Files
 
 The skill files are located at: {jira_skills_path}/jira-assistant-skills/skills/
-The library files are located at: {jira_skills_path}/jira-assistant-skills-lib/src/jira_assistant_skills_lib/
+The library files are located at: {jira_skills_path}/jira-as/src/jira_as/
 
 Current relevant file contents:
 """

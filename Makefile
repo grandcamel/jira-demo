@@ -291,9 +291,9 @@ test-skill:
 #        make test-skill-dev SCENARIO=search FORK_FROM=0     # Fork from checkpoint after prompt 0
 JIRA_SKILLS_PATH ?= /Users/jasonkrueger/IdeaProjects/Jira-Assistant-Skills
 JIRA_PLUGIN_PATH = $(JIRA_SKILLS_PATH)/plugins/jira-assistant-skills
-JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib
+JIRA_LIB_PATH = $(JIRA_SKILLS_PATH)/jira-as
 # Use consolidated wheel from lib dist (contains both library and CLI)
-JIRA_DIST_PATH = $(JIRA_SKILLS_PATH)/jira-assistant-skills-lib/dist
+JIRA_DIST_PATH = $(JIRA_SKILLS_PATH)/jira-as/dist
 # Session persistence directories for fork feature
 CLAUDE_SESSIONS_DIR ?= /tmp/claude-sessions
 CHECKPOINTS_DIR ?= /tmp/checkpoints

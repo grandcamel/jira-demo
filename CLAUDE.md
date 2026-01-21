@@ -52,16 +52,16 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Stat panel query type**: Grafana executes Loki metric queries as range queries by default, evaluating at multiple timestamps with overlapping windows. This causes stat panels to show ~60-100x inflated counts. Fix: add `"queryType": "instant"` to stat panel targets in dashboard JSON. Validate with direct Loki query: `curl 'http://localhost:3100/loki/api/v1/query' --data-urlencode 'query=sum(count_over_time({job="skill-test"} |= \`test_complete\` [1h]))'`.
 - **Loki high cardinality**: Queries without aggregation may hit "maximum number of series (500) reached" error due to label combinations (scenario × level × prompt_index × quality). Always use `sum()` or filter by specific labels.
 - **Skill routing failures**: Common test failure pattern: jira-assistant hub routes to `jira-assistant-setup` instead of specific skills (`jira-search`, `jira-issue`, `jira-fields`). Check skill descriptions and routing logic.
-- **Plugin is documentation-only**: The JIRA Assistant Skills plugin contains only SKILL.md files (documentation). All CLI implementation is in the `jira-assistant-skills` package (source: `jira-assistant-skills-lib/` submodule).
-- **Package renamed**: The package is now `jira-assistant-skills` (not `jira-assistant-skills-lib`). Install with `pip install jira-assistant-skills`. The Python module name is still `jira_assistant_skills_lib`.
-- **Mock mode requires get_jira_client() check**: The `is_mock_mode()` check must be in the `get_jira_client()` convenience function (config_manager.py), not just ConfigManager methods. Skills call the convenience function via `from jira_assistant_skills_lib import get_jira_client`.
+- **Plugin is documentation-only**: The JIRA Assistant Skills plugin contains only SKILL.md files (documentation). All CLI implementation is in the `jira-as` package (source: `jira-as/` submodule).
+- **Package renamed**: The package is now `jira-as` (not `jira-assistant-skills-lib`). Install with `pip install jira-as`. The Python module name is `jira_as`.
+- **Mock mode requires get_jira_client() check**: The `is_mock_mode()` check must be in the `get_jira_client()` convenience function (config_manager.py), not just ConfigManager methods. Skills call the convenience function via `from jira_as import get_jira_client`.
 - **Telemetry reveals tool call cascades**: Loki `prompt_complete` events include `tools_called` array (e.g., `["Skill", "Bash", "Skill", "Bash"]`). Use this to diagnose unexpected tool usage patterns like credential check cascades.
 - **Compare interactive vs mock tests**: When mock tests fail but interactive tests pass with the same prompt, check if the container has the latest library code. Stale container = mock client not activating = credential validation fails = Bash diagnostic cascade.
 - **Mock client API parity**: Mock client methods must match real `JiraClient` signatures exactly. Common miss: `search_issues()` needs `next_page_token` parameter. Error pattern: `TypeError: MockJiraClientBase.search_issues() got an unexpected keyword argument 'next_page_token'`. Fix in `mock/base.py`, not config_manager.
 - **Test CLI directly first**: Before running full `make test-skill-mock-dev`, test `jira-as` CLI commands directly to get clearer errors. See "Mock Mode Debugging" section below.
 - **Mock activation vs mock errors**: Different failure patterns: (1) Mock not activating = credential validation errors + Bash cascade. (2) Mock activated but incomplete = `TypeError` on mock methods. Verify activation first with quick Python test.
-- **jira-as CLI from wheel**: The `jira-as` CLI is in the `jira-assistant-skills` package (source: `jira-assistant-skills-lib/`). Install from wheel via `pip install /opt/jira-dist/*.whl`. Makefile targets mount the `dist/` directory for this.
-- **Rebuild wheel after package changes**: Changes to `jira-assistant-skills` package require rebuilding the wheel (`hatch build` in `jira-assistant-skills-lib/`) before container will see them.
+- **jira-as CLI from wheel**: The `jira-as` CLI is in the `jira-as` package (source: `jira-as/`). Install from wheel via `pip install /opt/jira-dist/*.whl`. Makefile targets mount the `dist/` directory for this.
+- **Rebuild wheel after package changes**: Changes to `jira-as` package require rebuilding the wheel (`hatch build` in `jira-as/`) before container will see them.
 - **Skill cascade on failure**: When Claude calls a Skill and the subsequent Bash command fails (e.g., `jira-as` not found), it cascades: Skill → Bash (fails) → setup skill → more Bash exploration. Root cause is usually missing CLI or misconfigured environment, not skill logic. Note: `Skill → Bash` is the CORRECT pattern (see below); only failure cascades are problematic.
 - **skill-test.py baked into container**: The `skill-test.py` is copied into the container image at build time. Changes to `demo-container/skill-test.py` require either `make build` OR mounting the local file. Makefile dev targets now mount it automatically: `-v $(PWD)/demo-container/skill-test.py:/workspace/skill-test.py:ro`.
 - **Judge needs skill execution context**: The LLM judge evaluates tool usage. Without context about how Claude Code skills work (`Skill → Bash` pattern), it will incorrectly penalize Bash usage as "extra tools". The judge prompt in `skill-test.py` includes this context - don't remove it.
@@ -78,7 +78,7 @@ make reset-sandbox                    # Reset JIRA sandbox
 - **Production env vars location**: On production (`/opt/jira-demo`), env vars must be in `.env` (project root), not `secrets/.env`. Docker-compose only reads `.env` from the project root. The `secrets/.env` is only loaded when using Makefile targets (via `include ./secrets/.env`).
 - **Production SSH access**: Production is at `ssh root@assistant-skills.dev` with code in `/opt/jira-demo`. Use `make` commands via SSH: `ssh root@assistant-skills.dev "cd /opt/jira-demo && make invite"`.
 - **Skill test working directory**: Skill tests must run from `/tmp` (neutral directory), not `/workspace`. When Claude sees plugin structure in working directory, it routes to setup prompts instead of executing skills. The Makefile adds `cd /tmp &&` before running tests.
-- **Consolidated wheel path**: Use wheels from `jira-assistant-skills-lib/dist/` (consolidated package with CLI), not `dist/` (stale wheels that require `jira-assistant-skills-lib` from PyPI). The stale wheels cause mock mode failures because PyPI version lacks latest fixes.
+- **Consolidated wheel path**: Use wheels from `jira-as/dist/` (consolidated package with CLI), not `dist/` (stale wheels that require `jira-as` from PyPI). The stale wheels cause mock mode failures because PyPI version lacks latest fixes.
 
 ## How Claude Code Skills Work
 
@@ -364,7 +364,7 @@ Quick verification workflow when mock tests fail.
 ```bash
 export JIRA_SKILLS_PATH=/path/to/Jira-Assistant-Skills  # Root repo
 export JIRA_PLUGIN_PATH=$JIRA_SKILLS_PATH/plugins/jira-assistant-skills
-export JIRA_LIB_PATH=$JIRA_SKILLS_PATH/jira-assistant-skills-lib
+export JIRA_LIB_PATH=$JIRA_SKILLS_PATH/jira-as
 export JIRA_DIST_PATH=$JIRA_SKILLS_PATH/dist
 ```
 
@@ -374,8 +374,8 @@ docker run --rm -e JIRA_MOCK_MODE=true \
     -v $JIRA_LIB_PATH:/opt/jira-lib:ro \
     --entrypoint bash jira-demo-container:latest \
     -c "pip install -q -e /opt/jira-lib && python3 -c '
-from jira_assistant_skills_lib import get_jira_client
-from jira_assistant_skills_lib.mock import is_mock_mode
+from jira_as import get_jira_client
+from jira_as.mock import is_mock_mode
 print(f\"is_mock_mode(): {is_mock_mode()}\")
 print(f\"Client type: {type(get_jira_client()).__name__}\")
 '"
@@ -432,7 +432,7 @@ make test-skill-mock-dev SCENARIO=issue PROMPT_INDEX=0 VERBOSE=1
 | Tools: `['Skill', 'Bash', 'Bash', ...]` | Multiple CLI calls | May be correct if multiple operations needed |
 | Tools: `['Skill', 'Bash', 'Skill', ...]` | Re-loading skill | Possible issue; skill should only load once per conversation |
 | `jira-as: command not found` | CLI not installed | Install from wheel: `pip install /opt/jira-dist/*.whl` |
-| Skill → setup → Bash exploration | CLI command failed | Check `which jira-as`; rebuild wheel with `hatch build` in `jira-assistant-skills-lib/` |
+| Skill → setup → Bash exploration | CLI command failed | Check `which jira-as`; rebuild wheel with `hatch build` in `jira-as/` |
 | "Tool accuracy: partial" with `['Skill', 'Bash']` | **FALSE NEGATIVE** | Test expectations wrong; `Skill → Bash` is correct |
 
 ## Shared Library
@@ -507,7 +507,7 @@ demo-platform-shared/
 |---------|---------|
 | as-demo (local: `../as-demo`) | Unified platform (Confluence + JIRA + Splunk) |
 | [JIRA Assistant Skills](https://github.com/grandcamel/Jira-Assistant-Skills) | Source plugin |
-| [jira-assistant-skills-lib](https://pypi.org/project/jira-assistant-skills/) | Shared library and CLI |
+| [jira-as](https://pypi.org/project/jira-as/) | Shared library and CLI |
 | [confluence-demo](https://github.com/grandcamel/confluence-demo) | Similar demo for Confluence |
 | [splunk-demo](https://github.com/grandcamel/splunk-demo) | Similar demo for Splunk |
 | demo-platform-shared (local: `../demo-platform-shared`) | Shared queue-manager-core library |

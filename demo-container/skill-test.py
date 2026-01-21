@@ -1131,7 +1131,7 @@ def generate_fix_context(result: PromptResult, skills_path: str) -> dict[str, An
 
     # Check if library code might be relevant (API errors, etc.)
     if "error" in result.response_text.lower() or result.quality == "low":
-        lib_path = skills_path_obj / "jira-assistant-skills-lib" / "src" / "jira_assistant_skills_lib"
+        lib_path = skills_path_obj / "jira-as" / "src" / "jira_as"
         if lib_path.exists():
             # Add search.py if relevant to search failures
             search_path = lib_path / "search.py"

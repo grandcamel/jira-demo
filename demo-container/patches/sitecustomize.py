@@ -92,7 +92,7 @@ class MockPersistenceImportHook:
 
     def find_module(self, fullname, path=None):
         # Only intercept the mock base module
-        if fullname == "jira_assistant_skills_lib.mock.base":
+        if fullname == "jira_as.mock.base":
             return self
         return None
 
